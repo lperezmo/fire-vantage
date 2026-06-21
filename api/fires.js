@@ -30,7 +30,7 @@ const HOTSPOT_FIELDS = 'DetectionDate,AgeInHours,Confidence,FRP,Sensor';
 const MAX_PERIM = 200;
 const MAX_HOTSPOT = 2000;
 
-function envelopeQuery(base, w, s, e, n, outFields, count, geometry = true) {
+function envelopeQuery(base, w, s, e, n, outFields, count, geometry = true, opts = {}) {
   const q = new URLSearchParams({
     where: '1=1',
     geometry: `${w},${s},${e},${n}`,
@@ -43,6 +43,18 @@ function envelopeQuery(base, w, s, e, n, outFields, count, geometry = true) {
     f: 'geojson',
     resultRecordCount: String(count),
   });
+  // Optional payload-shrinking passthroughs (regional mode). Both are honored by
+  // the ArcGIS FeatureServer query API and are backward compatible: when absent
+  // (box mode) the query is byte-for-byte unchanged.
+  //   maxAllowableOffset - Douglas-Peucker simplification tolerance (in outSR
+  //     units, i.e. degrees here) applied server-side to the returned geometry.
+  //   precision          - number of decimal places to keep on coordinates.
+  if (Number.isFinite(opts.maxAllowableOffset) && opts.maxAllowableOffset > 0) {
+    q.set('maxAllowableOffset', String(opts.maxAllowableOffset));
+  }
+  if (Number.isFinite(opts.precision) && opts.precision > 0) {
+    q.set('geometryPrecision', String(Math.round(opts.precision)));
+  }
   return `${base}?${q.toString()}`;
 }
 
@@ -98,6 +110,13 @@ export async function proxyFires(reqUrl, res) {
     return;
   }
 
+  // Optional regional-mode payload shrinkers (backward compatible: box mode
+  // omits them, so the query is unchanged there).
+  const opts = {
+    maxAllowableOffset: Number(params.get('maxAllowableOffset')),
+    precision: Number(params.get('precision')),
+  };
+
   // Pad the perimeter query so a large fire whose body sits just outside the
   // drawn box still shows its edge; hotspots use the tight box.
   const padX = (e - w) * 0.6, padY = (n - s) * 0.6;
@@ -110,7 +129,7 @@ export async function proxyFires(reqUrl, res) {
   // killing the other, so the client always gets whatever is available.
   try {
     const feats = await fetchGeoJSON(
-      envelopeQuery(PERIM, w - padX, s - padY, e + padX, n + padY, PERIM_FIELDS, MAX_PERIM)
+      envelopeQuery(PERIM, w - padX, s - padY, e + padX, n + padY, PERIM_FIELDS, MAX_PERIM, true, opts)
     );
     perimeters = { type: 'FeatureCollection', features: feats };
     perimOk = true;

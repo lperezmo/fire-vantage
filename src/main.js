@@ -3,11 +3,21 @@ import './style.css';
 import { setupMap } from './ui/map.js';
 import { renderResults } from './ui/panel.js';
 import { bboxAreaKm2 } from './data/geo.js';
+import { createRegional } from './regional/index.js';
 
 const $ = (id) => document.getElementById(id);
 const MAX_AREA_KM2 = 60;
 
-const worker = new Worker(new URL('./analysis/worker.js', import.meta.url), { type: 'module' });
+// The heavy box pipeline (terrain + worker + viewshed) is UNCHANGED. The worker
+// is created lazily so the default regional Drive Board never spins it up.
+let worker = null;
+function getWorker() {
+  if (!worker) {
+    worker = new Worker(new URL('./analysis/worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = onWorkerMessage;
+  }
+  return worker;
+}
 
 let lastResult = null;
 let panelCtl = null;
@@ -15,6 +25,7 @@ let selectedRank = null;
 let running = false;
 let fireVisible = true;
 let riskVisible = true;
+let mode = 'regional'; // 'regional' | 'box'
 
 const map = setupMap((box) => {
   $('analyze-btn').disabled = false;
@@ -37,6 +48,30 @@ function endDrawUi() {
   $('draw-btn').textContent = 'Draw analysis area';
 }
 
+// ---- mode routing ----
+function enterBoxMode() {
+  mode = 'box';
+  document.body.classList.add('mode-box');
+  $('drive-board').hidden = true;
+  $('sidebar').hidden = false;
+}
+function enterRegionalMode() {
+  mode = 'regional';
+  document.body.classList.remove('mode-box');
+  $('sidebar').hidden = true;
+  $('drive-board').hidden = false;
+  // clear box overlays so the regional layers are unobstructed
+  map.clearAll();
+  lastResult = null; selectedRank = null;
+  $('results').innerHTML = '';
+  $('analyze-btn').disabled = true;
+  $('clear-btn').hidden = true;
+  $('conditions').hidden = true; $('conditions').innerHTML = '';
+  const u = new URL(location.href);
+  u.searchParams.delete('bbox');
+  history.replaceState(null, '', u);
+}
+
 // ---- search ----
 async function doSearch() {
   const q = $('search').value.trim();
@@ -48,6 +83,13 @@ async function doSearch() {
 }
 $('search-btn').addEventListener('click', doSearch);
 $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+
+// ---- back to drive board ----
+$('back-to-board').addEventListener('click', () => {
+  endDrawUi();
+  map.cancelDraw();
+  enterRegionalMode();
+});
 
 // ---- draw (toggle: tap again to cancel) ----
 $('draw-btn').addEventListener('click', () => {
@@ -149,7 +191,7 @@ async function runAnalysis(box) {
     const lon = (box.east + box.west) / 2;
     wind = await fetchWind(lat, lon);
   }
-  worker.postMessage({ bbox: box, ui, wind });
+  getWorker().postMessage({ bbox: box, ui, wind });
 }
 
 $('analyze-btn').addEventListener('click', () => runAnalysis(map.getBox()));
@@ -159,7 +201,7 @@ function setProgress(pct, label) {
   $('progress-label').textContent = label || '';
 }
 
-worker.onmessage = (e) => {
+function onWorkerMessage(e) {
   const msg = e.data;
   if (msg.type === 'progress') {
     setProgress(msg.pct, msg.label);
@@ -190,7 +232,7 @@ worker.onmessage = (e) => {
     $('progress').hidden = true;
     $('draw-hint').textContent = `Analysis failed: ${msg.message}. Try again or a different area.`;
   }
-};
+}
 
 function selectSpot(rank) {
   if (!lastResult) return;
@@ -218,12 +260,8 @@ function renderConditions(result) {
   const wind = result && result.wind;
   if (wind && Number.isFinite(wind.speedMph) && Number.isFinite(wind.dirDeg)) {
     const fromLabel = compassLabel(wind.dirDeg);
-    // arrow points the way the wind blows TO = dirDeg + 180. The triangle's
-    // natural point is "up" (north / 0 deg) so rotate by the blows-to bearing.
     const toBearing = (wind.dirDeg + 180) % 360;
     const gust = Number.isFinite(wind.gustMph) ? `, gusts ${Math.round(wind.gustMph)}` : '';
-    // inline SVG triangle pointing up (north) by default, recoloured via
-    // currentColor; the span is rotated to the blows-to bearing.
     const svg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">` +
       `<path d="M12 2 L20 20 L12 15 L4 20 Z"/></svg>`;
     const arrow = `<span class="wind-arrow" style="transform:rotate(${toBearing.toFixed(0)}deg)" aria-hidden="true">${svg}</span>`;
@@ -269,7 +307,6 @@ async function open3d(rank) {
   $('viewer').hidden = false;
   $('viewer-title').textContent = `3D view - Spot ${rank}`;
   view3dMod = view3dMod || await import('./scene/view3d.js');
-  // give the canvas a frame to lay out before sizing the renderer
   requestAnimationFrame(() => view3dMod.openViewer($('viewer-canvas'), lastResult, spot));
 }
 $('viewer-close').addEventListener('click', () => {
@@ -277,29 +314,73 @@ $('viewer-close').addEventListener('click', () => {
   view3dMod?.disposeViewer();
 });
 
-// ---- shareable / deep-link box: ?bbox=west,south,east,north ----
+// ===================================================================
+// Mode router. DEFAULT = regional. ?bbox= -> box mode (auto-run, as before).
+// ===================================================================
+
+// Pre-draw a box and run the existing analysis, switching into box mode. Used by
+// the regional "Inspect this ground" action.
+function inspectBox(box) {
+  enterBoxMode();
+  map.setBox(box, { fit: true });
+  $('analyze-btn').disabled = false;
+  $('clear-btn').hidden = false;
+  runAnalysis(box);
+}
+
+// Enter box mode with an empty draw state (regional "Draw a custom area").
+function drawCustom() {
+  enterBoxMode();
+  $('draw-hint').textContent = DEFAULT_HINT;
+  // kick straight into drawing for convenience
+  $('draw-btn').click();
+}
+
+const regional = createRegional(map);
+regional.setInspectHandler(inspectBox);
+regional.setDrawCustomHandler(drawCustom);
+
 (function initFromUrl() {
-  const raw = new URL(location.href).searchParams.get('bbox');
-  if (!raw) return;
-  const p = raw.split(',').map(Number);
-  if (p.length !== 4 || p.some((n) => !Number.isFinite(n))) return;
-  const box = { west: p[0], south: p[1], east: p[2], north: p[3] };
+  const url = new URL(location.href);
+  const raw = url.searchParams.get('bbox');
+
+  // Box-mode deep link takes precedence (preserve existing behavior).
+  if (raw) {
+    const p = raw.split(',').map(Number);
+    if (p.length === 4 && p.every((n) => Number.isFinite(n))) {
+      const box = { west: p[0], south: p[1], east: p[2], north: p[3] };
+      enterBoxMode();
+      let fired = false;
+      const start = () => {
+        if (fired) return;
+        fired = true;
+        map.setBox(box, { fit: true });
+        $('analyze-btn').disabled = false;
+        $('clear-btn').hidden = false;
+        runAnalysis(box);
+      };
+      if (map.map.loaded() || map.map.isStyleLoaded()) {
+        start();
+      } else {
+        map.map.once('styledata', start);
+        map.map.once('load', start);
+        map.map.once('idle', start);
+        setTimeout(start, 2000);
+      }
+      return;
+    }
+  }
+
+  // Default: regional Drive Board. Render static layers immediately, hydrate
+  // data when fetches resolve. Reuse the proven cold-start guard so the first
+  // paint happens as soon as the style is ready (or after 2 s on a cold map).
+  enterRegionalMode();
   let fired = false;
   const start = () => {
     if (fired) return;
     fired = true;
-    map.setBox(box, { fit: true });
-    $('analyze-btn').disabled = false;
-    $('clear-btn').hidden = false;
-    runAnalysis(box);
+    regional.start();
   };
-  // Run start() as soon as the map is ready enough to accept setBox/fitBounds.
-  // MapLibre fires 'load' when the style fully settles, but on a cold browser
-  // that can lag 60+ seconds. 'styledata' fires earlier but still not reliably
-  // within a second. The fallback setTimeout(2000) kicks off the analysis worker
-  // (which only needs the bbox, not the map) and queues the setBox draw-source
-  // update for when the style eventually arrives. The fired guard ensures start()
-  // runs exactly once across all paths.
   if (map.map.loaded() || map.map.isStyleLoaded()) {
     start();
   } else {

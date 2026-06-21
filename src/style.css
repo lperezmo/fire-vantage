@@ -150,10 +150,129 @@ footer { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px;
 #viewer-canvas { flex: 1; width: 100%; display: block; }
 #viewer-hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--muted); background: rgba(0,0,0,.5); padding: 5px 12px; border-radius: 20px; margin: 0; }
 
+/* ===================================================================
+   Regional Drive Board (default mode). Desktop = left sidebar; mobile =
+   bottom sheet with snap points. Verdict palette: clear/caution/avoid.
+   =================================================================== */
+:root {
+  --clear: #22c55e;
+  --caution: #f5a623;
+  --avoid: #ef4444;
+}
+
+#drive-board {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 360px;
+  max-width: 92vw;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  padding: 14px 16px 20px;
+  overflow-y: auto;
+  z-index: 6;
+  box-shadow: 2px 0 18px rgba(0,0,0,.55);
+}
+
+.sheet-handle { display: none; }
+
+.db-header h1 { margin: 0; font-size: 22px; letter-spacing: .5px; color: var(--accent); }
+.db-sub { margin: 2px 0 12px; font-size: 12.5px; color: var(--muted); }
+.db-sub strong { color: var(--text); }
+
+.db-banner {
+  background: #3a1209; border: 1px solid var(--avoid); color: #ffd9d2;
+  border-radius: 8px; padding: 9px 11px; font-size: 12px; margin-bottom: 10px; line-height: 1.4;
+}
+.db-banner strong { color: #ff6f60; }
+
+.db-bar {
+  border-radius: 9px; padding: 11px 13px; font-size: 14px; font-weight: 700;
+  text-align: center; margin-bottom: 12px; letter-spacing: .2px;
+}
+.db-bar.clear   { background: #0d2c18; color: var(--clear); border: 1px solid #1c6b3c; }
+.db-bar.caution { background: #3a2a08; color: var(--caution); border: 1px solid #8a6312; }
+.db-bar.avoid   { background: #3a0f0a; color: #ff7c6e; border: 1px solid #8a2c22; }
+
+.db-pin { display: none; }
+
+.db-list { display: flex; flex-direction: column; gap: 8px; }
+
+.db-row {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 11px;
+  padding: 0; overflow: hidden; transition: border-color .12s;
+  border-left: 4px solid var(--line);
+}
+.db-row.verdict-avoid   { border-left-color: var(--avoid); }
+.db-row.verdict-caution { border-left-color: var(--caution); }
+.db-row.verdict-clear   { border-left-color: var(--clear); }
+.db-row.verdict-unknown { border-left-color: var(--muted); }
+.db-row.sel { border-color: var(--accent-2); }
+.db-row.open { border-color: var(--accent); }
+
+.db-row-head {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px;
+  padding: 11px 12px; cursor: pointer; min-height: 44px;
+}
+.db-row-head:hover { background: rgba(255,255,255,.02); }
+
+.chip {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .5px; padding: 3px 7px;
+  border-radius: 5px; color: #1a0c06; white-space: nowrap;
+}
+.chip.avoid   { background: var(--avoid); color: #fff; }
+.chip.caution { background: var(--caution); }
+.chip.clear   { background: var(--clear); color: #04210f; }
+.chip.unknown { background: var(--muted); }
+
+.db-town { font-size: 14px; font-weight: 600; color: var(--text); }
+.db-dist { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.db-reason { font-size: 12px; color: var(--text); padding: 0 12px 4px; line-height: 1.4; }
+.db-fire { font-size: 11px; color: var(--muted); padding: 0 12px 11px; font-family: ui-monospace, monospace; }
+
+.db-card { padding: 0 12px 12px; border-top: 1px solid var(--line); margin-top: 2px; }
+.card-line { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding: 7px 0 0; }
+.card-line strong { color: var(--text); }
+.card-haz { font-size: 12.5px; color: var(--accent-2); margin: 9px 0 3px; line-height: 1.4; }
+.card-incidents { margin: 8px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--text); line-height: 1.5; }
+.card-note { font-size: 11px; color: var(--muted); margin-top: 9px; line-height: 1.4; font-style: italic; }
+.card-actions { display: flex; gap: 8px; margin-top: 12px; }
+.card-actions .card-inspect,
+.card-actions .card-maps {
+  flex: 1; text-align: center; padding: 11px 8px; border-radius: 8px; font-size: 12.5px;
+  min-height: 44px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; text-decoration: none; border: 1px solid var(--line);
+}
+.card-inspect { background: #3a1f14; border-color: #5c3320; color: var(--accent-2); font-weight: 600; }
+.card-inspect:hover { background: #4a281a; }
+.card-maps { background: var(--panel); color: var(--text); }
+.card-maps:hover { border-color: var(--accent); }
+
+.db-draw-entry { width: 100%; margin-top: 14px; font-size: 12.5px; padding: 11px; min-height: 44px; }
+.db-caveat { font-size: 10.5px; color: var(--muted); margin: 12px 0 0; line-height: 1.45; border-top: 1px solid var(--line); padding-top: 10px; }
+.db-attr { font-size: 10px; color: #8a6a5a; margin: 8px 0 0; line-height: 1.4; }
+
+/* hub + town map markers */
+.hub-mk {
+  width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
+  border: 3px solid #1a0c06; box-shadow: 0 0 0 2px var(--accent), 0 2px 8px rgba(0,0,0,.6);
+}
+.town-mk {
+  width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid #0b0805;
+  box-shadow: 0 2px 6px rgba(0,0,0,.55); cursor: pointer; background: var(--muted);
+}
+.town-mk.verdict-avoid   { background: var(--avoid); }
+.town-mk.verdict-caution { background: var(--caution); }
+.town-mk.verdict-clear   { background: var(--clear); }
+.town-mk.verdict-unknown { background: var(--muted); }
+
+/* back-to-board affordance in the inspect sidebar */
+#sidebar .back { margin-bottom: 8px; font-size: 12px; padding: 6px 10px; }
+
 /* maplibre tweaks */
 .maplibregl-ctrl-attrib { font-size: 10px; }
 
 @media (max-width: 640px) {
+  /* ---- inspect sidebar (box mode) as a top sheet, unchanged behavior ---- */
   #sidebar { width: 100%; max-width: 100%; bottom: auto; max-height: 52vh; border-right: none; border-bottom: 1px solid var(--line); }
   #map { top: 0; }
   .map-legend { left: auto; right: 10px; top: auto; bottom: 90px; }
@@ -167,4 +286,39 @@ footer { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px;
   body.drawing #sidebar #results,
   body.drawing #sidebar footer { display: none; }
   body.drawing #draw-btn { width: 100%; }
+
+  /* ---- Drive Board as a bottom sheet with snap points ---- */
+  #drive-board {
+    top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-width: 100%;
+    border-right: none; border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 22px rgba(0,0,0,.6);
+    transition: height .22s ease;
+    padding-top: 6px;
+    overscroll-behavior: contain;
+  }
+  #drive-board.snap-peek { height: 38vh; }
+  #drive-board.snap-expanded { height: 85vh; }
+  #drive-board.snap-collapsed { height: 92px; overflow: hidden; }
+
+  .sheet-handle {
+    display: flex; justify-content: center; align-items: center;
+    height: 22px; cursor: grab; touch-action: none;
+  }
+  .sheet-handle .grip { width: 42px; height: 5px; border-radius: 3px; background: var(--line); }
+
+  /* collapsed: hide everything but the handle + pinned one-line summary */
+  #drive-board.snap-collapsed .db-header,
+  #drive-board.snap-collapsed .db-banner,
+  #drive-board.snap-collapsed .db-bar,
+  #drive-board.snap-collapsed .db-list,
+  #drive-board.snap-collapsed .db-draw-entry,
+  #drive-board.snap-collapsed .db-caveat,
+  #drive-board.snap-collapsed .db-attr { display: none; }
+  #drive-board.snap-collapsed .db-pin {
+    display: block; text-align: center; font-size: 13px; font-weight: 700; padding: 6px 12px;
+  }
+  #drive-board.snap-collapsed .db-pin.clear   { color: var(--clear); }
+  #drive-board.snap-collapsed .db-pin.caution { color: var(--caution); }
+  #drive-board.snap-collapsed .db-pin.avoid   { color: #ff7c6e; }
 }

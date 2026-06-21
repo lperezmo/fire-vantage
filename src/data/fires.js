@@ -8,6 +8,8 @@
 // (nearestKm Infinity, empty perimeters/hotspots) so the rest of the app still
 // runs.
 
+import { metersBetween, geometryBounds } from './geomath.js';
+
 // Per-cell geo mapping - MUST match build.js / the shared contract exactly so all
 // grids align: row 0 = north edge, last row = south edge.
 function cellLon(bbox, gridW, col) {
@@ -54,23 +56,6 @@ function pointInGeometry(lon, lat, geom) {
   return false;
 }
 
-// Axis-aligned bbox of a geometry's coordinates, for a cheap reject test.
-function geometryBounds(geom) {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const polys = geom.type === 'MultiPolygon' ? geom.coordinates : [geom.coordinates];
-  for (const poly of polys) {
-    const ring = poly && poly[0];
-    if (!ring) continue;
-    for (const pt of ring) {
-      if (pt[0] < minX) minX = pt[0];
-      if (pt[0] > maxX) maxX = pt[0];
-      if (pt[1] < minY) minY = pt[1];
-      if (pt[1] > maxY) maxY = pt[1];
-    }
-  }
-  return { minX, minY, maxX, maxY };
-}
-
 // Iterate every vertex of a Polygon/MultiPolygon geometry's rings.
 function forEachVertex(geom, fn) {
   if (!geom) return;
@@ -82,16 +67,6 @@ function forEachVertex(geom, fn) {
       for (const pt of ring) fn(pt[0], pt[1]);
     }
   }
-}
-
-// Equirectangular metric distance between two lon/lat points (same approximation
-// the drone-vantage airport-distance helper uses; good for parcel-scale spans).
-function metersBetween(lon1, lat1, lon2, lat2) {
-  const mPerDegLat = 111_320;
-  const mPerDegLon = 111_320 * Math.cos((((lat1 + lat2) / 2) * Math.PI) / 180);
-  const dx = (lon2 - lon1) * mPerDegLon;
-  const dy = (lat2 - lat1) * mPerDegLat;
-  return Math.hypot(dx, dy);
 }
 
 const EMPTY = () => ({
