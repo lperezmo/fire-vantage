@@ -1,0 +1,19 @@
+{
+  "name": "fire-vantage",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Wildfire situational awareness for the western US: draw a box, pull real terrain, imagery, and canopy fuel, overlay live fire perimeters and wind, and run a client-side spread-risk and escape line-of-sight analysis.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "maplibre-gl": "^4.7.1",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}

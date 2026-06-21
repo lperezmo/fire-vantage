@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="Wildfire situational awareness for the western US: live fire perimeters, terrain, fuel, and wind, with a spread-risk and escape line-of-sight analysis for any area you draw." />
+    <title>Fire Vantage - wildfire spread risk &amp; escape planning</title>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <div id="sidebar">
+      <header>
+        <h1>Fire&nbsp;Vantage</h1>
+        <p class="tag">Live fire perimeters, spread risk, and escape line-of-sight for any ground</p>
+      </header>
+
+      <div class="search-row">
+        <input id="search" type="text" placeholder="Search a place, address, or lat,lng" autocomplete="off" />
+        <button id="search-btn" title="Search">Go</button>
+      </div>
+
+      <div class="step">
+        <button id="draw-btn" class="primary">Draw analysis area</button>
+        <button id="clear-btn" class="ghost" hidden>Clear</button>
+        <p class="hint" id="draw-hint">Tap "Draw analysis area", then drag a box across the ground you want to assess.</p>
+      </div>
+
+      <button id="analyze-btn" class="primary big" disabled>Run fire analysis</button>
+
+      <div id="progress" hidden>
+        <div class="bar"><div class="fill" id="progress-fill"></div></div>
+        <span id="progress-label">Working...</span>
+      </div>
+
+      <div id="conditions" hidden></div>
+
+      <div class="overlay-row">
+        <button id="toggle-fire" class="ghost" hidden>Hide fire perimeters</button>
+        <button id="toggle-risk" class="ghost" hidden>Hide spread risk</button>
+      </div>
+
+      <details id="settings">
+        <summary>Tune the analysis</summary>
+        <label class="fld">Planning goal
+          <select id="goal-mode">
+            <option value="safety" selected>Safest staging spots</option>
+            <option value="risk">Highest-risk cells</option>
+            <option value="lookout">Best fire-watch lookouts</option>
+          </select>
+        </label>
+        <label class="fld">Line-of-sight range
+          <select id="range">
+            <option value="1000">1000 m</option>
+            <option value="2000" selected>2000 m</option>
+            <option value="4000">4000 m</option>
+            <option value="8000">8000 m</option>
+          </select>
+        </label>
+        <label class="fld">Observer / eye height
+          <select id="eye">
+            <option value="1.7" selected>Standing (1.7 m)</option>
+            <option value="3">Vehicle / rise (3 m)</option>
+            <option value="10">Lookout tower (10 m)</option>
+          </select>
+        </label>
+        <label class="chk"><input type="checkbox" id="use-wind" checked /> Use live wind in the spread model</label>
+
+        <p class="wt-title">Weights</p>
+        <label class="slider">Distance from spread <input type="range" id="w-spread" min="0" max="100" value="35" /></label>
+        <label class="slider">Fire visibility (line-of-sight) <input type="range" id="w-los" min="0" max="100" value="25" /></label>
+        <label class="slider">Low fuel around spot <input type="range" id="w-fuel" min="0" max="100" value="15" /></label>
+        <label class="slider">Open, level ground <input type="range" id="w-ground" min="0" max="100" value="15" /></label>
+        <label class="slider">Off the upslope path <input type="range" id="w-slope" min="0" max="100" value="10" /></label>
+      </details>
+
+      <div id="results"></div>
+
+      <footer>
+        <p class="attr">Terrain: Mapzen/AWS Terrain Tiles. Imagery: Esri World Imagery. Fire perimeters &amp; hotspots: NIFC/WFIGS. Wind: Open-Meteo.</p>
+        <p class="disc">Models spread tendency and line-of-sight from public data for situational awareness and planning only. It is not a fire forecast, an evacuation order, or a substitute for official guidance. In a real fire, follow InciWeb, local authorities, and emergency services.</p>
+      </footer>
+    </div>
+
+    <div id="viewer" hidden>
+      <div id="viewer-bar">
+        <span id="viewer-title">3D terrain view</span>
+        <button id="viewer-close">Close</button>
+      </div>
+      <canvas id="viewer-canvas"></canvas>
+      <p id="viewer-hint">Drag to orbit, scroll to zoom. The marker is the staging point, the red tint is spread risk, the arrow shows wind.</p>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
