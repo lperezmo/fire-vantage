@@ -79,7 +79,7 @@ function downloadGpx(spots) {
     <desc>${escapeXml(spotDesc(s))}</desc>
   </wpt>`).join('\n');
   const gpx = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Fire Vantage" xmlns="http://www.topografix.com/GPX/1/1">
+<gpx version="1.1" creator="Fire and Road Conditions" xmlns="http://www.topografix.com/GPX/1/1">
 ${pts}
 </gpx>`;
   download(gpx, 'application/gpx+xml', 'fire-vantage-spots.gpx');
@@ -95,7 +95,7 @@ function downloadKml(spots) {
   const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Fire Vantage</name>
+    <name>Fire and Road Conditions</name>
 ${placemarks}
   </Document>
 </kml>`;

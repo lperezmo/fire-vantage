@@ -48,7 +48,7 @@ export function renderDriveBoard(container, state, handlers) {
   const header = document.createElement('div');
   header.className = 'db-header';
   header.innerHTML =
-    `<h1>Fire&nbsp;Vantage</h1>` +
+    `<h1>Fire &amp; Road Conditions</h1>` +
     `<p class="db-sub">Drive Board - leaving <strong>${esc(hub.name)}</strong></p>`;
   container.appendChild(header);
 
