@@ -125,12 +125,33 @@ export function setupMap(onBox) {
 
   // ---- overlays ----
   // Run fn once the style is ready (addSource throws otherwise).
+  // On a cold browser MapLibre can take 60+ seconds to report isStyleLoaded()=true
+  // even though tiles are already visible.  The isLoaded flag is set once we
+  // discover the style is truly ready (to avoid redundant retries); until then
+  // we poll every 100 ms so the overlays appear as soon as possible.
+  let styleReady = false;
+  map.on('load', () => { styleReady = true; });
   function whenStyle(fn) {
-    if (map.isStyleLoaded()) { fn(); return; }
-    const h = () => {
-      if (map.isStyleLoaded()) { map.off('styledata', h); fn(); }
+    if (styleReady || map.isStyleLoaded()) { fn(); return; }
+    let done = false;
+    const tryRun = () => {
+      if (done) return;
+      if (styleReady || map.isStyleLoaded()) {
+        done = true;
+        styleReady = true;
+        fn();
+      }
     };
-    map.on('styledata', h);
+    map.on('styledata', tryRun);
+    map.on('load', tryRun);
+    // Polling fallback: if the map is visually rendering but events haven't fired,
+    // try every 100 ms (gives up after 90 s with clearInterval).
+    let ticks = 0;
+    const poll = setInterval(() => {
+      ticks++;
+      tryRun();
+      if (done || ticks > 900) clearInterval(poll);
+    }, 100);
   }
 
   // keep the draw box outline above every overlay we add
@@ -191,10 +212,14 @@ export function setupMap(onBox) {
     const fire = result && result.fire;
     if (!fire || !fire.ok) return;
 
-    // perimeters: GeoJSON polygons, faint red fill + red outline
-    const perims = Array.isArray(fire.perimeters) ? fire.perimeters : [];
+    // perimeters: GeoJSON polygons, faint red fill + red outline.
+    // fire.perimeters is a FeatureCollection; extract the features array.
+    const perimFC = fire.perimeters && Array.isArray(fire.perimeters.features)
+      ? fire.perimeters
+      : { type: 'FeatureCollection', features: [] };
+    const perims = perimFC.features;
     if (perims.length) {
-      map.addSource('fire-perim', { type: 'geojson', data: { type: 'FeatureCollection', features: perims } });
+      map.addSource('fire-perim', { type: 'geojson', data: perimFC });
       map.addLayer({
         id: 'fire-perim-fill', type: 'fill', source: 'fire-perim',
         paint: { 'fill-color': '#ff3b30', 'fill-opacity': 0.12 },

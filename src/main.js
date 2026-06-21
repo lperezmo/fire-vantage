@@ -293,7 +293,19 @@ $('viewer-close').addEventListener('click', () => {
     $('clear-btn').hidden = false;
     runAnalysis(box);
   };
-  // run once the map has loaded so fitBounds + overlays apply cleanly
-  if (map.map.loaded()) start();
-  else map.map.once('load', start);
+  // Run start() as soon as the map is ready enough to accept setBox/fitBounds.
+  // MapLibre fires 'load' when the style fully settles, but on a cold browser
+  // that can lag 60+ seconds. 'styledata' fires earlier but still not reliably
+  // within a second. The fallback setTimeout(2000) kicks off the analysis worker
+  // (which only needs the bbox, not the map) and queues the setBox draw-source
+  // update for when the style eventually arrives. The fired guard ensures start()
+  // runs exactly once across all paths.
+  if (map.map.loaded() || map.map.isStyleLoaded()) {
+    start();
+  } else {
+    map.map.once('styledata', start);
+    map.map.once('load', start);
+    map.map.once('idle', start);
+    setTimeout(start, 2000);
+  }
 })();
