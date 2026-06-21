@@ -142,9 +142,9 @@ export function renderDriveBoard(container, state, handlers) {
   container.appendChild(drawEntry);
 
   // ---- caveat ----
-  // Drop the "Washington not included" line only when WSDOT is configured and a
-  // WA leg actually carried WSDOT alerts; otherwise keep the honest note.
-  const waActive = results.some((r) => r.waCovered);
+  // Use the WSDOT caveat whenever the WA proxy is configured (a key is set), not
+  // only when alerts happen to be present; otherwise keep the not-included note.
+  const waActive = results.some((r) => r.waConfigured);
   const cav = document.createElement('p');
   cav.className = 'db-caveat';
   cav.textContent = CAVEAT_BASE + (waActive ? CAVEAT_WA : CAVEAT_NO_WA);
@@ -207,10 +207,14 @@ function buildCard(cardEl, r, hub, handlers) {
     bits.push(`<ul class="card-incidents">${items}</ul>`);
   }
 
-  // WA honesty note: keep it for WA legs UNLESS WSDOT data is configured and
-  // this leg actually surfaced WA alerts (then the alerts above stand in).
+  // WA honesty note, three states: no key -> not included; configured but no
+  // alerts on this leg -> checked, none reported; configured with alerts -> the
+  // alerts above stand in (no note).
   if (town.crossesWA && !r.waCovered) {
-    bits.push(`<div class="card-note">This leg enters Washington. ODOT covers Oregon highways only - Washington road data is not included yet.</div>`);
+    const waNote = r.waConfigured
+      ? 'This leg enters Washington. WSDOT is checked; no current Washington highway alerts on it.'
+      : 'This leg enters Washington. ODOT covers Oregon highways only - Washington road data is not included yet.';
+    bits.push(`<div class="card-note">${waNote}</div>`);
   }
 
   // actions
