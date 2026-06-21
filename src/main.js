@@ -336,7 +336,10 @@ function drawCustom() {
   $('draw-btn').click();
 }
 
-const regional = createRegional(map);
+// createRegional and its layer helpers call raw MapLibre methods
+// (isStyleLoaded, addSource, flyTo, getZoom, ...), so pass the underlying
+// MapLibre instance (map.map), not the setupMap wrapper object.
+const regional = createRegional(map.map);
 regional.setInspectHandler(inspectBox);
 regional.setDrawCustomHandler(drawCustom);
 
