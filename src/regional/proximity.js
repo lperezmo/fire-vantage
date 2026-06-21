@@ -124,14 +124,39 @@ export function incidentForcesAvoid(inc) {
   return false;
 }
 
+// ---- WSDOT (Washington) alert classification ----
+
+// True if a WSDOT alert indicates a closure or wildfire (forces AVOID near a
+// route, like an ODOT closure/wildfire incident).
+export function waAlertForcesAvoid(a) {
+  const cat = (a.category || '').toLowerCase();
+  const head = (a.headline || '').toLowerCase();
+  const ext = (a.extended || '').toLowerCase();
+  const txt = `${cat} ${head} ${ext}`;
+  if (txt.includes('wildfire') || txt.includes('wild fire') || txt.includes('brush fire')) return true;
+  if (txt.includes('closed') || txt.includes('closure')) return true;
+  return false;
+}
+
+// A short human headline for a WSDOT alert (mirrors incidentHeadline).
+export function waAlertHeadline(a) {
+  const where = a.road
+    ? (a.milePost != null ? `${a.road} MP ${a.milePost}` : a.road)
+    : 'a Washington highway';
+  const what = a.headline || a.category || 'WSDOT alert';
+  return `${what} on ${where}.`.trim();
+}
+
 // ---- the main per-route risk computation ----
 //
 // route:    [[lon,lat],...] baked polyline
 // fire:     { perimeters: FeatureCollection, hotspots: [{lon,lat,...}] }
 // incidents:[{lon,lat,route,category,subType,eventType,severity,comments,beginMarker,...}]
+// waAlerts: [{lon,lat,road,milePost,category,headline,extended,...}] (Washington;
+//           only relevant on legs that cross into WA, but classified the same way)
 //
-// Returns { verdict, nearestFireKm, reason, hazard, fireSamples, incidentHits }.
-export function computeRouteRisk(route, fire, incidents) {
+// Returns { verdict, nearestFireKm, reason, hazard, incidentHits, waHits }.
+export function computeRouteRisk(route, fire, incidents, waAlerts) {
   const routeBox = lineBounds(route, 0.12); // ~13 km pad in deg for prefilter
   let nearestFireKm = Infinity;
   let nearestFireKind = null; // 'perimeter' | 'hotspot' | 'inside'
@@ -181,6 +206,17 @@ export function computeRouteRisk(route, fire, incidents) {
   }
   incidentHits.sort((a, b) => a.distKm - b.distKm);
 
+  // ---- WSDOT (Washington) alerts near this route ----
+  const waHits = [];
+  for (const a of (waAlerts || [])) {
+    if (!Number.isFinite(a.lon) || !Number.isFinite(a.lat)) continue;
+    const d = pointToRoutePrefiltered(a.lon, a.lat, route, routeBox);
+    if (d <= INCIDENT_KM) {
+      waHits.push({ ...a, distKm: d, forcesAvoid: waAlertForcesAvoid(a) });
+    }
+  }
+  waHits.sort((a, b) => a.distKm - b.distKm);
+
   // ---- combine into a verdict ----
   let verdict = VERDICT.CLEAR;
   let reason = 'No fire or incidents reported near this route.';
@@ -219,12 +255,31 @@ export function computeRouteRisk(route, fire, incidents) {
     }
   }
 
+  // WSDOT (Washington) alert contributions: a closure/wildfire forces AVOID, any
+  // other WA alert near the route is CAUTION. Treated exactly like ODOT.
+  const wasAvoidBefore = verdict === VERDICT.AVOID;
+  const avoidWa = waHits.find((a) => a.forcesAvoid);
+  if (avoidWa) {
+    verdict = worstVerdict(verdict, VERDICT.AVOID);
+    if (!wasAvoidBefore) { reason = waAlertHeadline(avoidWa); hazard = { type: 'waAlert', alert: avoidWa, distKm: avoidWa.distKm }; }
+  } else if (waHits.length) {
+    verdict = worstVerdict(verdict, VERDICT.CAUTION);
+    // surface the WA alert only if neither fire nor an ODOT incident already
+    // claimed the reason/hazard (keep the strongest single deciding hazard).
+    if (verdict !== VERDICT.AVOID && !incidentHits.length && (!hazard || hazard.type !== 'fire')) {
+      const top = waHits[0];
+      reason = waAlertHeadline(top);
+      hazard = { type: 'waAlert', alert: top, distKm: top.distKm };
+    }
+  }
+
   return {
     verdict,
     nearestFireKm,
     reason,
     hazard,
     incidentHits,
+    waHits,
   };
 }
 

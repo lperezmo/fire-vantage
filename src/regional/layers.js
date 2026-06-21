@@ -94,21 +94,37 @@ export function createRegionalLayers(map) {
   }
 
   // ---- town + hub markers ----
+  // Each marker is a dot plus a NAME label beside it. The label is a DOM element
+  // (not a MapLibre symbol layer) so we stay keyless with no glyph server, and it
+  // gets a dark halo so it reads on the bright satellite basemap. The verdict
+  // color lives on the dot only; the label text is neutral so it never clashes.
+  function dotWithLabel(name, dotClass, title) {
+    const wrap = document.createElement('div');
+    wrap.className = 'town-mk-wrap';
+    const dot = document.createElement('div');
+    dot.className = dotClass;
+    if (title) dot.title = title;
+    const label = document.createElement('span');
+    label.className = 'town-label';
+    label.textContent = name;
+    wrap.appendChild(dot);
+    wrap.appendChild(label);
+    return { wrap, dot };
+  }
+
   function setTownMarkers(hub, routeResults, onSelect) {
     clearTownMarkers();
-    // hub (distinct)
-    const hubEl = document.createElement('div');
-    hubEl.className = 'hub-mk';
-    hubEl.title = `${hub.name} (you are here)`;
-    townMarkers.push(new maplibregl.Marker({ element: hubEl, anchor: 'center' })
+    // hub (distinct), labeled "Pendleton"
+    const hubParts = dotWithLabel(hub.name, 'hub-mk', `${hub.name} (you are here)`);
+    hubParts.wrap.classList.add('is-hub');
+    townMarkers.push(new maplibregl.Marker({ element: hubParts.wrap, anchor: 'center' })
       .setLngLat([hub.lon, hub.lat]).addTo(map));
 
     for (const r of routeResults) {
-      const el = document.createElement('div');
-      el.className = `town-mk verdict-${r.verdict}`;
-      el.title = `${r.town.name} - ${r.verdict.toUpperCase()}`;
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); onSelect(r.town.id); });
-      townMarkers.push(new maplibregl.Marker({ element: el, anchor: 'center' })
+      const parts = dotWithLabel(r.town.name, `town-mk verdict-${r.verdict}`, `${r.town.name} - ${r.verdict.toUpperCase()}`);
+      parts.wrap.style.cursor = 'pointer';
+      parts.wrap.addEventListener('click', (ev) => { ev.stopPropagation(); onSelect(r.town.id); });
+      townMarkers.push(new maplibregl.Marker({ element: parts.wrap, anchor: 'center' })
         .setLngLat([r.town.lon, r.town.lat]).addTo(map));
     }
   }

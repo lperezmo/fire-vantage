@@ -114,11 +114,42 @@ area works through the shareable box link, for example
 `?bbox=-118.6,45.2,-118.0,45.6`, which opens straight into the terrain analysis as
 before.
 
-### Roadmap
+### Basemap
 
-Washington road incidents (WSDOT) need a free API key and a new proxy and are
-deferred to v2. Until then the Walla Walla leg shows Oregon-side data only with an
-honest note.
+A small toggle at the top-right of the map switches the basemap between
+**Satellite** (Esri World Imagery, the default) and **Street** (Esri World
+Topographic, which carries street and topo detail you can zoom into). Both are
+keyless Esri raster tiles. On the satellite basemap a keyless Esri reference
+overlay adds place and road labels so it is not label-less. The choice is saved
+to `localStorage`. Switching only swaps the basemap source tiles, so the fire,
+route, town, and draw-box overlays are untouched and the draw-a-box analysis
+keeps working on either basemap.
+
+### Place-name labels
+
+Each destination town and the Pendleton hub carry a name label beside their
+marker, with a dark halo so they stay readable on the bright satellite imagery.
+The verdict color stays on the dot; the label text is neutral so the two never
+clash.
+
+### Washington road alerts (WSDOT)
+
+The Walla Walla leg crosses into Washington, where ODOT data does not apply.
+When a free WSDOT access code is configured (see the env var below) the app pulls
+**WSDOT HighwayAlerts** for the Walla Walla / US-12 corridor through the
+`/api/wa-alerts` serverless proxy and folds them into that leg's verdict exactly
+like ODOT incidents: a closure or wildfire forces AVOID, any other alert is
+CAUTION. The proxy is env-gated and graceful: with no key set it returns
+`{ "configured": false, "alerts": [] }` (HTTP 200, never 500) and the app keeps
+its honest "Washington roads are not included yet" note; if WSDOT is down it
+degrades to the same note rather than crashing. The access code never reaches the
+browser; it is read server-side from the env var.
+
+#### Environment variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `WSDOT_ACCESS_CODE` | No | Free WSDOT Traveler Information API access code. When set, the `/api/wa-alerts` proxy pulls Washington HighwayAlerts for the Walla Walla corridor and the Walla Walla leg reflects WSDOT closures. When unset, the app degrades gracefully to the honest "Washington roads not included yet" note. Set it in the Vercel project environment (and in a local `.env`, copied from `.env.example`, for dev). Request a free code at https://wsdot.wa.gov/traffic/api/ |
 
 ## Run locally
 
@@ -129,9 +160,11 @@ npm run build    # production build into dist/
 npm run preview  # serve the production build
 ```
 
-Node 18 or newer. The `/api/tiles` and `/api/fires` routes run as Vercel
-serverless functions in production and as Vite dev middleware locally, so the app
-behaves identically in both.
+Node 18 or newer. The `/api/tiles`, `/api/fires`, and `/api/wa-alerts` routes run
+as Vercel serverless functions in production and as Vite dev middleware locally,
+so the app behaves identically in both. To exercise the Washington alerts path in
+dev, copy `.env.example` to `.env` and set `WSDOT_ACCESS_CODE`; without it the WA
+leg shows the honest "not included yet" note.
 
 ## Data and limits
 

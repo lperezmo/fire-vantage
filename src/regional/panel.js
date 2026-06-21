@@ -15,9 +15,10 @@ const VERDICT_LABEL = {
 
 const RANK = { avoid: 0, caution: 1, clear: 2, unknown: 1.5 };
 
-const CAVEAT =
-  'Incidents are ODOT-reported on Oregon state highways; confirm on TripCheck. ' +
-  'Washington roads are not included yet.';
+const CAVEAT_BASE =
+  'Incidents are ODOT-reported on Oregon state highways; confirm on TripCheck.';
+const CAVEAT_NO_WA = ' Washington roads are not included yet.';
+const CAVEAT_WA = ' Washington roads use WSDOT HighwayAlerts; confirm on the WSDOT travel map.';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
@@ -141,9 +142,12 @@ export function renderDriveBoard(container, state, handlers) {
   container.appendChild(drawEntry);
 
   // ---- caveat ----
+  // Drop the "Washington not included" line only when WSDOT is configured and a
+  // WA leg actually carried WSDOT alerts; otherwise keep the honest note.
+  const waActive = results.some((r) => r.waCovered);
   const cav = document.createElement('p');
   cav.className = 'db-caveat';
-  cav.textContent = CAVEAT;
+  cav.textContent = CAVEAT_BASE + (waActive ? CAVEAT_WA : CAVEAT_NO_WA);
   container.appendChild(cav);
 
   // ---- footer attribution ----
@@ -183,15 +187,29 @@ function buildCard(cardEl, r, hub, handlers) {
     bits.push(`<div class="card-line"><span>Wind</span><strong>${Math.round(r.wind.speedMph)} mph from ${from}</strong></div>`);
   }
 
-  // incident list (if any)
+  // incident list (if any). When WA alerts are also present we prefix a source
+  // label so the two states are distinguishable; otherwise keep the bare list.
+  const hasWa = r.waHits && r.waHits.length;
   if (r.incidentHits && r.incidentHits.length) {
     const items = r.incidentHits.slice(0, 3).map((i) =>
       `<li>${esc(i.beginMarker || i.route || 'state highway')}: ${esc(i.comments || i.subType || i.category || 'incident')}</li>`).join('');
+    if (hasWa) bits.push(`<div class="card-src">Oregon (ODOT)</div>`);
     bits.push(`<ul class="card-incidents">${items}</ul>`);
   }
 
-  // WA honesty note
-  if (town.crossesWA) {
+  // Washington (WSDOT) alerts: shown just like ODOT incidents when present.
+  if (hasWa) {
+    const items = r.waHits.slice(0, 3).map((a) => {
+      const where = a.road ? (a.milePost != null ? `${a.road} MP ${a.milePost}` : a.road) : 'WA highway';
+      return `<li>${esc(where)}: ${esc(a.headline || a.category || 'alert')}</li>`;
+    }).join('');
+    bits.push(`<div class="card-src">Washington (WSDOT)</div>`);
+    bits.push(`<ul class="card-incidents">${items}</ul>`);
+  }
+
+  // WA honesty note: keep it for WA legs UNLESS WSDOT data is configured and
+  // this leg actually surfaced WA alerts (then the alerts above stand in).
+  if (town.crossesWA && !r.waCovered) {
     bits.push(`<div class="card-note">This leg enters Washington. ODOT covers Oregon highways only - Washington road data is not included yet.</div>`);
   }
 

@@ -112,6 +112,25 @@ async function fetchAlert() {
   }
 }
 
+// WSDOT (Washington) road alerts for the Walla Walla / US-12 corridor, through
+// our env-gated serverless proxy. The proxy returns { configured, alerts } and
+// never 500s: when the WSDOT_ACCESS_CODE env var is unset it returns
+// configured:false so the UI keeps the honest "Washington roads not included
+// yet" note. Never throws.
+async function fetchWaAlerts() {
+  try {
+    const r = await fetch('/api/wa-alerts');
+    if (!r.ok) return { configured: false, alerts: [] };
+    const j = await r.json();
+    return {
+      configured: !!(j && j.configured),
+      alerts: (j && Array.isArray(j.alerts)) ? j.alerts : [],
+    };
+  } catch {
+    return { configured: false, alerts: [] };
+  }
+}
+
 async function fetchWind() {
   try {
     const r = await fetch(OPENMETEO_URL);
@@ -152,10 +171,19 @@ function computeAll(data) {
   // CAUTION for every route (honesty rule: never a false CLEAR).
   const degraded = !data.fireOk && !data.incidentsOk;
 
+  // WSDOT alerts only apply to legs that enter Washington, and only when the
+  // proxy reported a configured key with real data to consider.
+  const waConfigured = !!data.waConfigured;
+  const waAlerts = waConfigured && Array.isArray(data.waAlerts) ? data.waAlerts : [];
+
   const results = TOWNS.map((town) => {
-    const risk = computeRouteRisk(town.route, fire, incidents);
+    const legWa = town.crossesWA ? waAlerts : [];
+    const risk = computeRouteRisk(town.route, fire, incidents, legWa);
     let verdict = risk.verdict;
     if (degraded) verdict = VERDICT.CAUTION;
+    // The honest WA note stays unless WA data is configured AND this leg has
+    // actual WA alerts to show instead.
+    const waCovered = town.crossesWA && waConfigured && risk.waHits && risk.waHits.length > 0;
     return {
       town,
       verdict,
@@ -163,6 +191,9 @@ function computeAll(data) {
       reason: degraded ? "Couldn't load live data - drive with caution and check TripCheck." : risk.reason,
       hazard: risk.hazard,
       incidentHits: risk.incidentHits,
+      waHits: risk.waHits || [],
+      waConfigured,
+      waCovered,
       wind: data.wind || null,
     };
   });
@@ -222,8 +253,8 @@ export function createRegional(map) {
     // memory cache first, then sessionStorage, else fetch
     let data = memCache || readCache();
     if (!data) {
-      const [fire, inc, alert, wind] = await Promise.all([
-        fetchFire(), fetchIncidents(), fetchAlert(), fetchWind(),
+      const [fire, inc, alert, wind, wa] = await Promise.all([
+        fetchFire(), fetchIncidents(), fetchAlert(), fetchWind(), fetchWaAlerts(),
       ]);
       data = {
         fireOk: !!fire.ok,
@@ -233,6 +264,8 @@ export function createRegional(map) {
         incidents: inc.incidents || [],
         alert,
         wind,
+        waConfigured: !!wa.configured,
+        waAlerts: wa.alerts || [],
       };
       memCache = data;
       writeCache(data);

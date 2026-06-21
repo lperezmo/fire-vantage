@@ -4,32 +4,119 @@
 
 import maplibregl from 'maplibre-gl';
 
-const SAT_STYLE = {
-  version: 8,
-  sources: {
-    sat: {
-      type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256,
-      attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
-      maxzoom: 19,
-    },
-  },
-  layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
+// Keyless Esri raster basemaps (same pattern as the existing World Imagery).
+// ArcGIS tile path is /{z}/{y}/{x}. Satellite = World Imagery; Street = World
+// Topographic (streets + topo, zoomable to z19).
+const BASEMAP_TILES = {
+  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  street: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
 };
+const BASEMAP_ATTRIB = {
+  satellite: 'Imagery © Esri, Maxar, Earthstar Geographics',
+  street: 'Map data © Esri, HERE, Garmin, USGS, NGA',
+};
+// Keyless Esri reference overlay (place + road labels) so the satellite basemap
+// is not label-less. Only shown on satellite; the street basemap has its own.
+const REFERENCE_TILES =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+
+const BASEMAP_KEY = 'fv-basemap';
+function readBasemapPref() {
+  try {
+    const v = localStorage.getItem(BASEMAP_KEY);
+    return v === 'street' || v === 'satellite' ? v : 'satellite';
+  } catch { return 'satellite'; }
+}
+function writeBasemapPref(kind) {
+  try { localStorage.setItem(BASEMAP_KEY, kind); } catch { /* ignore */ }
+}
+
+function baseStyle(kind) {
+  return {
+    version: 8,
+    sources: {
+      sat: {
+        type: 'raster',
+        tiles: [BASEMAP_TILES[kind] || BASEMAP_TILES.satellite],
+        tileSize: 256,
+        attribution: BASEMAP_ATTRIB[kind] || BASEMAP_ATTRIB.satellite,
+        maxzoom: 19,
+      },
+      reference: {
+        type: 'raster',
+        tiles: [REFERENCE_TILES],
+        tileSize: 256,
+        maxzoom: 19,
+      },
+    },
+    layers: [
+      { id: 'sat', type: 'raster', source: 'sat' },
+      // place/road labels above the basemap; visible on satellite only.
+      { id: 'reference', type: 'raster', source: 'reference',
+        layout: { visibility: kind === 'satellite' ? 'visible' : 'none' } },
+    ],
+  };
+}
 
 const corners = (b) => [[b.west, b.north], [b.east, b.north], [b.east, b.south], [b.west, b.south]];
 
 export function setupMap(onBox) {
+  let basemap = readBasemapPref();
   const map = new maplibregl.Map({
     container: 'map',
-    style: SAT_STYLE,
+    style: baseStyle(basemap),
     center: [-118.7886, 45.6721],
     zoom: 9,
+    maxZoom: 19,
     attributionControl: { compact: true },
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
   map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true } }), 'bottom-right');
+
+  // ---- basemap toggle (satellite <-> street) ----
+  // Swapping the raster SOURCE's tiles (setTiles) is far cleaner than setStyle:
+  // it leaves every overlay source/layer (fire, risk, routes, draw box) intact,
+  // so nothing needs re-adding. The reference label overlay is shown on
+  // satellite only (the street basemap already carries its own labels).
+  function applyBasemap(kind) {
+    basemap = (kind === 'street') ? 'street' : 'satellite';
+    const apply = () => {
+      const src = map.getSource('sat');
+      if (src && typeof src.setTiles === 'function') {
+        src.setTiles([BASEMAP_TILES[basemap]]);
+      }
+      if (map.getLayer('reference')) {
+        map.setLayoutProperty('reference', 'visibility', basemap === 'satellite' ? 'visible' : 'none');
+      }
+    };
+    if (map.isStyleLoaded()) apply(); else map.once('styledata', apply);
+    writeBasemapPref(basemap);
+    updateBasemapUi();
+  }
+
+  let basemapCtl = null;
+  function updateBasemapUi() {
+    if (!basemapCtl) return;
+    basemapCtl.querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.basemap === basemap);
+      b.setAttribute('aria-pressed', String(b.dataset.basemap === basemap));
+    });
+  }
+  function buildBasemapControl() {
+    const el = document.createElement('div');
+    el.className = 'basemap-toggle';
+    el.innerHTML =
+      `<button type="button" data-basemap="satellite">Satellite</button>` +
+      `<button type="button" data-basemap="street">Street</button>`;
+    el.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (btn) applyBasemap(btn.dataset.basemap);
+    });
+    map.getContainer().appendChild(el);
+    basemapCtl = el;
+    updateBasemapUi();
+  }
+  buildBasemapControl();
 
   let drawing = false;
   let startLngLat = null;
@@ -385,6 +472,8 @@ export function setupMap(onBox) {
   return {
     map, beginDraw, cancelDraw, geocode, setBox,
     showRisk, showFootprint, showFire, toggleFire, toggleRisk, addMarkers, clearAll,
+    setBasemap: applyBasemap,
+    getBasemap: () => basemap,
     getBox: () => box,
     flyToSpot: (s) => map.flyTo({ center: [s.lon, s.lat], zoom: Math.max(map.getZoom(), 14.5) }),
   };
