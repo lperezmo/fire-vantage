@@ -24,7 +24,7 @@ export function setupMap(onBox) {
   const map = new maplibregl.Map({
     container: 'map',
     style: SAT_STYLE,
-    center: [-118.3, 45.4],
+    center: [-118.7886, 45.6721],
     zoom: 9,
     attributionControl: { compact: true },
   });
