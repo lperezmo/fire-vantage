@@ -46,8 +46,14 @@ function parseMsDate(s) {
 }
 
 function inBbox(lat, lon, b) {
-  return Number.isFinite(lat) && Number.isFinite(lon) &&
-    lon >= b.west && lon <= b.east && lat >= b.south && lat <= b.north;
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    lon >= b.west &&
+    lon <= b.east &&
+    lat >= b.south &&
+    lat <= b.north
+  );
 }
 
 // Keep only alerts relevant to the Walla Walla corridor: county match OR a
@@ -107,9 +113,7 @@ export async function proxyWaAlerts(reqUrl, res) {
     if (!r.ok) throw new Error(`upstream ${r.status}`);
     const j = await r.json();
     const list = Array.isArray(j) ? j : [];
-    const alerts = list
-      .filter(isRelevant)
-      .map(reduceAlert);
+    const alerts = list.filter(isRelevant).map(reduceAlert);
     res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=300');
     res.statusCode = 200;
     res.end(JSON.stringify({ configured: true, alerts }));
@@ -119,7 +123,13 @@ export async function proxyWaAlerts(reqUrl, res) {
     // shows the honest note rather than crashing.
     res.setHeader('Cache-Control', 'public, max-age=30, s-maxage=30');
     res.statusCode = 200;
-    res.end(JSON.stringify({ configured: true, alerts: [], error: String(err?.message || 'wsdot error') }));
+    res.end(
+      JSON.stringify({
+        configured: true,
+        alerts: [],
+        error: String(err?.message || 'wsdot error'),
+      }),
+    );
   }
 }
 

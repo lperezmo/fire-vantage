@@ -17,7 +17,10 @@ export function metersBetween(lon1, lat1, lon2, lat2) {
 // Axis-aligned bbox of a GeoJSON Polygon/MultiPolygon geometry's coordinates,
 // for a cheap reject test before a full point-in-polygon or distance scan.
 export function geometryBounds(geom) {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   const polys = geom.type === 'MultiPolygon' ? geom.coordinates : [geom.coordinates];
   for (const poly of polys) {
     const ring = poly && poly[0];

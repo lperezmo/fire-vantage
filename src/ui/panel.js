@@ -27,7 +27,10 @@ export function renderResults(container, spots, { onSelect, onView3d }) {
       <div class="coords">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)} - ${s.elevation} m</div>
       <button class="view3d">View in 3D</button>`;
     card.addEventListener('click', () => onSelect(s.rank));
-    card.querySelector('.view3d').addEventListener('click', (e) => { e.stopPropagation(); onView3d(s.rank); });
+    card.querySelector('.view3d').addEventListener('click', (e) => {
+      e.stopPropagation();
+      onView3d(s.rank);
+    });
     container.appendChild(card);
     cards.push(card);
   });
@@ -61,7 +64,9 @@ export function renderResults(container, spots, { onSelect, onView3d }) {
 }
 
 const fireDist = (s) =>
-  (Number.isFinite(s.nearestFireKm) ? `${s.nearestFireKm.toFixed(1)} km from fire` : 'no active fire nearby');
+  Number.isFinite(s.nearestFireKm)
+    ? `${s.nearestFireKm.toFixed(1)} km from fire`
+    : 'no active fire nearby';
 
 function scoreLine(s) {
   const acres = Math.round(s.visibleFireAcres || 0).toLocaleString();
@@ -72,12 +77,16 @@ const spotDesc = (s) =>
   `Rank ${s.rank} - score ${s.rating} - sees ~${Math.round(s.visibleFireAcres || 0)} acres fuel - ${fireDist(s)}. ${s.why}.`;
 
 function downloadGpx(spots) {
-  const pts = spots.map((s) =>
-    `  <wpt lat="${s.lat.toFixed(6)}" lon="${s.lon.toFixed(6)}">
+  const pts = spots
+    .map(
+      (s) =>
+        `  <wpt lat="${s.lat.toFixed(6)}" lon="${s.lon.toFixed(6)}">
     <ele>${s.elevation}</ele>
     <name>Spot ${s.rank} (score ${s.rating})</name>
     <desc>${escapeXml(spotDesc(s))}</desc>
-  </wpt>`).join('\n');
+  </wpt>`,
+    )
+    .join('\n');
   const gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Fire and Road Conditions" xmlns="http://www.topografix.com/GPX/1/1">
 ${pts}
@@ -86,12 +95,16 @@ ${pts}
 }
 
 function downloadKml(spots) {
-  const placemarks = spots.map((s) =>
-    `    <Placemark>
+  const placemarks = spots
+    .map(
+      (s) =>
+        `    <Placemark>
       <name>Spot ${s.rank} (score ${s.rating})</name>
       <description>${escapeXml(spotDesc(s))}</description>
       <Point><coordinates>${s.lon.toFixed(6)},${s.lat.toFixed(6)},${s.elevation}</coordinates></Point>
-    </Placemark>`).join('\n');
+    </Placemark>`,
+    )
+    .join('\n');
   const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
@@ -111,5 +124,13 @@ function download(text, mime, filename) {
   URL.revokeObjectURL(a.href);
 }
 
-const escapeXml = (s) => String(s).replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
-const escapeHtml = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const escapeXml = (s) =>
+  String(s).replace(
+    /[<>&'"]/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c],
+  );
+const escapeHtml = (s) =>
+  String(s).replace(
+    /[<>&"]/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c],
+  );

@@ -11,8 +11,10 @@ maplibregl.setWorkerUrl(mapWorkerUrl);
 // ArcGIS tile path is /{z}/{y}/{x}. Satellite = World Imagery; Street = World
 // Topographic (streets + topo, zoomable to z19).
 const BASEMAP_TILES = {
-  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  street: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+  satellite:
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  street:
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
 };
 const BASEMAP_ATTRIB = {
   satellite: 'Imagery © Esri, Maxar, Earthstar Geographics',
@@ -28,10 +30,16 @@ function readBasemapPref() {
   try {
     const v = localStorage.getItem(BASEMAP_KEY);
     return v === 'street' || v === 'satellite' ? v : 'satellite';
-  } catch { return 'satellite'; }
+  } catch {
+    return 'satellite';
+  }
 }
 function writeBasemapPref(kind) {
-  try { localStorage.setItem(BASEMAP_KEY, kind); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(BASEMAP_KEY, kind);
+  } catch {
+    /* ignore */
+  }
 }
 
 function baseStyle(kind) {
@@ -55,13 +63,22 @@ function baseStyle(kind) {
     layers: [
       { id: 'sat', type: 'raster', source: 'sat' },
       // place/road labels above the basemap; visible on satellite only.
-      { id: 'reference', type: 'raster', source: 'reference',
-        layout: { visibility: kind === 'satellite' ? 'visible' : 'none' } },
+      {
+        id: 'reference',
+        type: 'raster',
+        source: 'reference',
+        layout: { visibility: kind === 'satellite' ? 'visible' : 'none' },
+      },
     ],
   };
 }
 
-const corners = (b) => [[b.west, b.north], [b.east, b.north], [b.east, b.south], [b.west, b.south]];
+const corners = (b) => [
+  [b.west, b.north],
+  [b.east, b.north],
+  [b.east, b.south],
+  [b.west, b.south],
+];
 
 export function setupMap(onBox) {
   let basemap = readBasemapPref();
@@ -74,7 +91,10 @@ export function setupMap(onBox) {
     attributionControl: { compact: true },
   });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-  map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true } }), 'bottom-right');
+  map.addControl(
+    new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true } }),
+    'bottom-right',
+  );
 
   // ---- basemap toggle (satellite <-> street) ----
   // Swapping the raster SOURCE's tiles (setTiles) is far cleaner than setStyle:
@@ -82,17 +102,22 @@ export function setupMap(onBox) {
   // so nothing needs re-adding. The reference label overlay is shown on
   // satellite only (the street basemap already carries its own labels).
   function applyBasemap(kind) {
-    basemap = (kind === 'street') ? 'street' : 'satellite';
+    basemap = kind === 'street' ? 'street' : 'satellite';
     const apply = () => {
       const src = map.getSource('sat');
       if (src && typeof src.setTiles === 'function') {
         src.setTiles([BASEMAP_TILES[basemap]]);
       }
       if (map.getLayer('reference')) {
-        map.setLayoutProperty('reference', 'visibility', basemap === 'satellite' ? 'visible' : 'none');
+        map.setLayoutProperty(
+          'reference',
+          'visibility',
+          basemap === 'satellite' ? 'visible' : 'none',
+        );
       }
     };
-    if (map.isStyleLoaded()) apply(); else map.once('styledata', apply);
+    if (map.isStyleLoaded()) apply();
+    else map.once('styledata', apply);
     writeBasemapPref(basemap);
     updateBasemapUi();
   }
@@ -134,25 +159,44 @@ export function setupMap(onBox) {
 
   map.on('load', () => {
     map.addSource('draw', { type: 'geojson', data: emptyFC() });
-    map.addLayer({ id: 'draw-fill', type: 'fill', source: 'draw', paint: { 'fill-color': '#38bdf8', 'fill-opacity': 0.12 } });
-    map.addLayer({ id: 'draw-line', type: 'line', source: 'draw', paint: { 'line-color': '#38bdf8', 'line-width': 2, 'line-dasharray': [2, 1] } });
+    map.addLayer({
+      id: 'draw-fill',
+      type: 'fill',
+      source: 'draw',
+      paint: { 'fill-color': '#38bdf8', 'fill-opacity': 0.12 },
+    });
+    map.addLayer({
+      id: 'draw-line',
+      type: 'line',
+      source: 'draw',
+      paint: { 'line-color': '#38bdf8', 'line-width': 2, 'line-dasharray': [2, 1] },
+    });
   });
 
-  function emptyFC() { return { type: 'FeatureCollection', features: [] }; }
+  function emptyFC() {
+    return { type: 'FeatureCollection', features: [] };
+  }
   function rectFeature(b) {
     return {
       type: 'FeatureCollection',
-      features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...corners(b), corners(b)[0]]] } }],
+      features: [
+        {
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates: [[...corners(b), corners(b)[0]]] },
+        },
+      ],
     };
   }
   const norm = (a, b) => ({
-    west: Math.min(a.lng, b.lng), east: Math.max(a.lng, b.lng),
-    south: Math.min(a.lat, b.lat), north: Math.max(a.lat, b.lat),
+    west: Math.min(a.lng, b.lng),
+    east: Math.max(a.lng, b.lng),
+    south: Math.min(a.lat, b.lat),
+    north: Math.max(a.lat, b.lat),
   });
 
   // ---- rectangle drawing (Pointer Events: works for mouse AND touch) ----
   const canvasEl = map.getCanvas();
-  let startPt = null;        // {x, y} pixel of the first corner
+  let startPt = null; // {x, y} pixel of the first corner
   let drawPointerId = null;
 
   function beginDraw() {
@@ -187,7 +231,11 @@ export function setupMap(onBox) {
     drawPointerId = e.pointerId;
     startPt = { x: e.clientX, y: e.clientY };
     startLngLat = eventLngLat(e);
-    try { canvasEl.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    try {
+      canvasEl.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
   });
 
   canvasEl.addEventListener('pointermove', (e) => {
@@ -211,7 +259,10 @@ export function setupMap(onBox) {
     onBox(box);
   }
   canvasEl.addEventListener('pointerup', finishDraw);
-  canvasEl.addEventListener('pointercancel', () => { startLngLat = null; drawPointerId = null; });
+  canvasEl.addEventListener('pointercancel', () => {
+    startLngLat = null;
+    drawPointerId = null;
+  });
 
   // ---- overlays ----
   // Run fn once the style is ready (addSource throws otherwise).
@@ -220,9 +271,14 @@ export function setupMap(onBox) {
   // discover the style is truly ready (to avoid redundant retries); until then
   // we poll every 100 ms so the overlays appear as soon as possible.
   let styleReady = false;
-  map.on('load', () => { styleReady = true; });
+  map.on('load', () => {
+    styleReady = true;
+  });
   function whenStyle(fn) {
-    if (styleReady || map.isStyleLoaded()) { fn(); return; }
+    if (styleReady || map.isStyleLoaded()) {
+      fn();
+      return;
+    }
     let done = false;
     const tryRun = () => {
       if (done) return;
@@ -255,22 +311,33 @@ export function setupMap(onBox) {
       map.triggerRepaint();
     } else {
       map.addSource(id, { type: 'canvas', canvas, coordinates: corners(b), animate: false });
-      map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': id === 'risk' ? 0.6 : 0.6, 'raster-resampling': 'linear' } });
+      map.addLayer({
+        id,
+        type: 'raster',
+        source: id,
+        paint: { 'raster-opacity': id === 'risk' ? 0.6 : 0.6, 'raster-resampling': 'linear' },
+      });
     }
   }
 
   // ---- spread-risk heatmap (green low -> amber -> red high) ----
-  function showRisk(result) { whenStyle(() => drawRisk(result)); }
+  function showRisk(result) {
+    whenStyle(() => drawRisk(result));
+  }
   function drawRisk(result) {
     const { cgW, cgH, risk } = result;
     if (!risk || !cgW || !cgH) return;
-    riskCanvas.width = cgW; riskCanvas.height = cgH;
+    riskCanvas.width = cgW;
+    riskCanvas.height = cgH;
     const ctx = riskCanvas.getContext('2d');
     const img = ctx.createImageData(cgW, cgH);
     for (let i = 0; i < risk.length; i++) {
       const [r, g, b] = ramp(risk[i]);
       const a = 40 + risk[i] * 180;
-      img.data[i * 4] = r; img.data[i * 4 + 1] = g; img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = a;
+      img.data[i * 4] = r;
+      img.data[i * 4 + 1] = g;
+      img.data[i * 4 + 2] = b;
+      img.data[i * 4 + 3] = a;
     }
     ctx.putImageData(img, 0, 0);
     ensureOverlay('risk', riskCanvas, result.bbox);
@@ -278,17 +345,25 @@ export function setupMap(onBox) {
   }
 
   // ---- selected-spot escape line-of-sight footprint (cyan) ----
-  function showFootprint(result, spot) { whenStyle(() => drawFootprint(result, spot)); }
+  function showFootprint(result, spot) {
+    whenStyle(() => drawFootprint(result, spot));
+  }
   function drawFootprint(result, spot) {
     const { gridW, gridH } = result;
     if (!spot || !spot.footprint || !gridW || !gridH) return;
-    fpCanvas.width = gridW; fpCanvas.height = gridH;
+    fpCanvas.width = gridW;
+    fpCanvas.height = gridH;
     const ctx = fpCanvas.getContext('2d');
     const img = ctx.createImageData(gridW, gridH);
     const fp = spot.footprint;
     for (let i = 0; i < fp.length; i++) {
       // cyan LOS coverage tint
-      if (fp[i]) { img.data[i * 4] = 56; img.data[i * 4 + 1] = 189; img.data[i * 4 + 2] = 248; img.data[i * 4 + 3] = 150; }
+      if (fp[i]) {
+        img.data[i * 4] = 56;
+        img.data[i * 4 + 1] = 189;
+        img.data[i * 4 + 2] = 248;
+        img.data[i * 4 + 3] = 150;
+      }
     }
     ctx.putImageData(img, 0, 0);
     ensureOverlay('fp', fpCanvas, result.bbox);
@@ -296,7 +371,9 @@ export function setupMap(onBox) {
   }
 
   // ---- live fire perimeters + hotspots ----
-  function showFire(result) { whenStyle(() => drawFire(result)); }
+  function showFire(result) {
+    whenStyle(() => drawFire(result));
+  }
   function drawFire(result) {
     removeFire();
     const fire = result && result.fire;
@@ -304,25 +381,34 @@ export function setupMap(onBox) {
 
     // perimeters: GeoJSON polygons, faint red fill + red outline.
     // fire.perimeters is a FeatureCollection; extract the features array.
-    const perimFC = fire.perimeters && Array.isArray(fire.perimeters.features)
-      ? fire.perimeters
-      : { type: 'FeatureCollection', features: [] };
+    const perimFC =
+      fire.perimeters && Array.isArray(fire.perimeters.features)
+        ? fire.perimeters
+        : { type: 'FeatureCollection', features: [] };
     const perims = perimFC.features;
     if (perims.length) {
       map.addSource('fire-perim', { type: 'geojson', data: perimFC });
       map.addLayer({
-        id: 'fire-perim-fill', type: 'fill', source: 'fire-perim',
+        id: 'fire-perim-fill',
+        type: 'fill',
+        source: 'fire-perim',
         paint: { 'fill-color': '#ff3b30', 'fill-opacity': 0.12 },
       });
       map.addLayer({
-        id: 'fire-perim-line', type: 'line', source: 'fire-perim',
+        id: 'fire-perim-line',
+        type: 'line',
+        source: 'fire-perim',
         paint: { 'line-color': '#ff3b30', 'line-width': 2 },
       });
 
       // click a perimeter -> popup "Name - N acres - C% contained"
       map.on('click', 'fire-perim-fill', onPerimClick);
-      map.on('mouseenter', 'fire-perim-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
-      map.on('mouseleave', 'fire-perim-fill', () => { map.getCanvas().style.cursor = ''; });
+      map.on('mouseenter', 'fire-perim-fill', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', 'fire-perim-fill', () => {
+        map.getCanvas().style.cursor = '';
+      });
     }
 
     // hotspots: glowing markers, capped for perf
@@ -347,7 +433,9 @@ export function setupMap(onBox) {
     if (firePopup) firePopup.remove();
     firePopup = new maplibregl.Popup({ closeButton: true, offset: 8 })
       .setLngLat(e.lngLat)
-      .setHTML(`<div style="font:12px system-ui,sans-serif;color:#1c1411">${bits.join(' - ')}</div>`)
+      .setHTML(
+        `<div style="font:12px system-ui,sans-serif;color:#1c1411">${bits.join(' - ')}</div>`,
+      )
       .addTo(map);
   }
 
@@ -371,13 +459,18 @@ export function setupMap(onBox) {
         el.style.opacity = String(Math.max(0.45, 1 - h.ageHours / 48));
       }
       if (Number.isFinite(h.confidence)) el.title = `hotspot - confidence ${h.confidence}`;
-      const m = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([h.lon, h.lat]).addTo(map);
+      const m = new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([h.lon, h.lat])
+        .addTo(map);
       hotspotMarkers.push(m);
     }
   }
 
   function ensureFireLegend() {
-    if (fireLegendEl) { fireLegendEl.style.display = ''; return; }
+    if (fireLegendEl) {
+      fireLegendEl.style.display = '';
+      return;
+    }
     const el = document.createElement('div');
     el.className = 'map-legend';
     el.innerHTML = `
@@ -393,20 +486,29 @@ export function setupMap(onBox) {
     for (const id of ['fire-perim-fill', 'fire-perim-line']) {
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis);
     }
-    hotspotMarkers.forEach((m) => { m.getElement().style.display = visible ? '' : 'none'; });
+    hotspotMarkers.forEach((m) => {
+      m.getElement().style.display = visible ? '' : 'none';
+    });
     if (fireLegendEl) fireLegendEl.style.display = visible ? '' : 'none';
   }
 
   // robust whether called before or after showFire
-  function toggleFire(visible) { whenStyle(() => setFireVisibility(visible)); }
+  function toggleFire(visible) {
+    whenStyle(() => setFireVisibility(visible));
+  }
 
   function setRiskVisibility(visible) {
     const vis = visible ? 'visible' : 'none';
     if (map.getLayer('risk')) map.setLayoutProperty('risk', 'visibility', vis);
   }
-  function toggleRisk(visible) { whenStyle(() => setRiskVisibility(visible)); }
+  function toggleRisk(visible) {
+    whenStyle(() => setRiskVisibility(visible));
+  }
 
-  function clearHotspotMarkers() { hotspotMarkers.forEach((m) => m.remove()); hotspotMarkers.length = 0; }
+  function clearHotspotMarkers() {
+    hotspotMarkers.forEach((m) => m.remove());
+    hotspotMarkers.length = 0;
+  }
   function removeFire() {
     map.off('click', 'fire-perim-fill', onPerimClick);
     for (const id of ['fire-perim-fill', 'fire-perim-line']) {
@@ -414,11 +516,20 @@ export function setupMap(onBox) {
     }
     if (map.getSource('fire-perim')) map.removeSource('fire-perim');
     clearHotspotMarkers();
-    if (firePopup) { firePopup.remove(); firePopup = null; }
-    if (fireLegendEl) { fireLegendEl.remove(); fireLegendEl = null; }
+    if (firePopup) {
+      firePopup.remove();
+      firePopup = null;
+    }
+    if (fireLegendEl) {
+      fireLegendEl.remove();
+      fireLegendEl = null;
+    }
   }
 
-  function clearMarkers() { markers.forEach((m) => m.remove()); markers.length = 0; }
+  function clearMarkers() {
+    markers.forEach((m) => m.remove());
+    markers.length = 0;
+  }
 
   // staging pins, numbered by rank, click -> onSelect(rank)
   function addMarkers(spots, onSelect) {
@@ -427,10 +538,16 @@ export function setupMap(onBox) {
       const el = document.createElement('div');
       el.className = 'staging-mk';
       const inner = document.createElement('span');
-      inner.textContent = s.rank; inner.style.transform = 'rotate(45deg)';
+      inner.textContent = s.rank;
+      inner.style.transform = 'rotate(45deg)';
       el.appendChild(inner);
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); onSelect(s.rank); });
-      const m = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([s.lon, s.lat]).addTo(map);
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        onSelect(s.rank);
+      });
+      const m = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([s.lon, s.lat])
+        .addTo(map);
       markers.push(m);
     });
   }
@@ -448,33 +565,67 @@ export function setupMap(onBox) {
 
   async function geocode(q) {
     const m = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
-    if (m) { const lat = +m[1], lon = +m[2]; map.flyTo({ center: [lon, lat], zoom: 14 }); return true; }
+    if (m) {
+      const lat = +m[1],
+        lon = +m[2];
+      map.flyTo({ center: [lon, lat], zoom: 14 });
+      return true;
+    }
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`, {
-        headers: { 'Accept-Language': 'en' },
-      });
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
+        {
+          headers: { 'Accept-Language': 'en' },
+        },
+      );
       const data = await r.json();
       if (!data.length) return false;
       const { lat, lon, boundingbox } = data[0];
       if (boundingbox) {
-        map.fitBounds([[+boundingbox[2], +boundingbox[0]], [+boundingbox[3], +boundingbox[1]]], { maxZoom: 14, padding: 40 });
+        map.fitBounds(
+          [
+            [+boundingbox[2], +boundingbox[0]],
+            [+boundingbox[3], +boundingbox[1]],
+          ],
+          { maxZoom: 14, padding: 40 },
+        );
       } else {
         map.flyTo({ center: [+lon, +lat], zoom: 14 });
       }
       return true;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
 
   function setBox(b, { fit = true } = {}) {
     box = b;
     const apply = () => map.getSource('draw')?.setData(rectFeature(b));
-    if (map.isStyleLoaded()) apply(); else map.once('load', apply);
-    if (fit) map.fitBounds([[b.west, b.south], [b.east, b.north]], { padding: 60, duration: 0 });
+    if (map.isStyleLoaded()) apply();
+    else map.once('load', apply);
+    if (fit)
+      map.fitBounds(
+        [
+          [b.west, b.south],
+          [b.east, b.north],
+        ],
+        { padding: 60, duration: 0 },
+      );
   }
 
   return {
-    map, beginDraw, cancelDraw, geocode, setBox,
-    showRisk, showFootprint, showFire, toggleFire, toggleRisk, addMarkers, clearAll,
+    map,
+    beginDraw,
+    cancelDraw,
+    geocode,
+    setBox,
+    showRisk,
+    showFootprint,
+    showFire,
+    toggleFire,
+    toggleRisk,
+    addMarkers,
+    clearAll,
     setBasemap: applyBasemap,
     getBasemap: () => basemap,
     getBox: () => box,
@@ -485,9 +636,16 @@ export function setupMap(onBox) {
 // risk 0..1 -> green(low) .. amber .. red(high)
 function ramp(t) {
   t = Math.max(0, Math.min(1, t));
-  if (t < 0.5) { const u = t / 0.5; return [31 + u * 206, 111 + u * 55, 58 + u * 13]; }  // green -> amber
+  if (t < 0.5) {
+    const u = t / 0.5;
+    return [31 + u * 206, 111 + u * 55, 58 + u * 13];
+  } // green -> amber
   const u = (t - 0.5) / 0.5;
-  return [237 + u * 2, 166 - u * 98, 71 - u * 23];                                       // amber -> red
+  return [237 + u * 2, 166 - u * 98, 71 - u * 23]; // amber -> red
 }
 
-const escapeHtml = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const escapeHtml = (s) =>
+  String(s).replace(
+    /[<>&"]/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c],
+  );

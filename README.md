@@ -87,11 +87,11 @@ No API keys. Everything runs on free, keyless public data:
    Open-Meteo and feed both the display and the spread model.
 5. It models spread risk. For every cell the app blends three transparent factors:
 
-   | Factor | What raises risk |
-   | --- | --- |
-   | Fuel | Denser canopy/vegetation carries fire faster |
-   | Slope | Fire spreads faster uphill, so upslope cells are riskier |
-   | Wind | Cells downwind of higher fuel and of active fire are riskier |
+   | Factor | What raises risk                                             |
+   | ------ | ------------------------------------------------------------ |
+   | Fuel   | Denser canopy/vegetation carries fire faster                 |
+   | Slope  | Fire spreads faster uphill, so upslope cells are riskier     |
+   | Wind   | Cells downwind of higher fuel and of active fire are riskier |
 
    Cells on or next to an active perimeter or hotspot are treated as maximum risk,
    and the risk decays with distance from active fire.
@@ -151,9 +151,9 @@ browser; it is read server-side from the env var.
 
 #### Environment variables
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `WSDOT_ACCESS_CODE` | No | Free WSDOT Traveler Information API access code. When set, the `/api/wa-alerts` proxy pulls Washington HighwayAlerts for the Walla Walla corridor and the Walla Walla leg reflects WSDOT closures. When unset, the app degrades gracefully to the honest "Washington roads not included yet" note. Set it in the Vercel project environment (and in a local `.env`, copied from `.env.example`, for dev). Request a free code at https://wsdot.wa.gov/traffic/api/ |
+| Variable            | Required | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `WSDOT_ACCESS_CODE` | No       | Free WSDOT Traveler Information API access code. When set, the `/api/wa-alerts` proxy pulls Washington HighwayAlerts for the Walla Walla corridor and the Walla Walla leg reflects WSDOT closures. When unset, the app degrades gracefully to the honest "Washington roads not included yet" note. Set it in the Vercel project environment (and in a local `.env`, copied from `.env.example`, for dev). Request a free code at https://wsdot.wa.gov/traffic/api/ |
 
 ## Run locally
 

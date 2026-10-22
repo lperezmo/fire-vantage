@@ -24,8 +24,7 @@ const ODOT_URL =
   '?geometry=-119.6,44.4,-117.4,46.2&geometryType=esriGeometryEnvelope&inSR=4326' +
   '&spatialRel=esriSpatialRelIntersects&outFields=*&f=geojson';
 
-const NWS_URL =
-  `https://api.weather.gov/alerts/active?point=${HUB.lat},${HUB.lon}`;
+const NWS_URL = `https://api.weather.gov/alerts/active?point=${HUB.lat},${HUB.lon}`;
 const NWS_UA = 'fire-vantage (github.com/lperezmo/fire-vantage)';
 
 const OPENMETEO_URL =
@@ -46,9 +45,11 @@ async function fetchFire() {
     const j = await r.json();
     return {
       ok: !!(j && (j.perimOk || j.hotOk)),
-      perimeters: (j && j.perimeters && Array.isArray(j.perimeters.features))
-        ? j.perimeters : { type: 'FeatureCollection', features: [] },
-      hotspots: (j && Array.isArray(j.hotspots)) ? j.hotspots : [],
+      perimeters:
+        j && j.perimeters && Array.isArray(j.perimeters.features)
+          ? j.perimeters
+          : { type: 'FeatureCollection', features: [] },
+      hotspots: j && Array.isArray(j.hotspots) ? j.hotspots : [],
     };
   } catch {
     return { ok: false };
@@ -60,12 +61,13 @@ async function fetchIncidents() {
     const r = await fetch(ODOT_URL);
     if (!r.ok) return { ok: false, incidents: [] };
     const j = await r.json();
-    const feats = (j && Array.isArray(j.features)) ? j.features : [];
+    const feats = j && Array.isArray(j.features) ? j.features : [];
     const incidents = [];
     for (const f of feats) {
       const p = f.properties || {};
       // prefer the Point geometry; fall back to start lat/lon
-      let lon = null, lat = null;
+      let lon = null,
+        lat = null;
       if (f.geometry && f.geometry.type === 'Point' && Array.isArray(f.geometry.coordinates)) {
         [lon, lat] = f.geometry.coordinates;
       }
@@ -75,7 +77,8 @@ async function fetchIncidents() {
       }
       if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
       incidents.push({
-        lon, lat,
+        lon,
+        lat,
         route: p.attributes_route || null,
         category: p.attributes_odotCategoryDescript || null,
         subType: p.attributes_eventSubTypeName || null,
@@ -95,10 +98,12 @@ async function fetchIncidents() {
 
 async function fetchAlert() {
   try {
-    const r = await fetch(NWS_URL, { headers: { 'User-Agent': NWS_UA, Accept: 'application/geo+json' } });
+    const r = await fetch(NWS_URL, {
+      headers: { 'User-Agent': NWS_UA, Accept: 'application/geo+json' },
+    });
     if (!r.ok) return { active: false };
     const j = await r.json();
-    const feats = (j && Array.isArray(j.features)) ? j.features : [];
+    const feats = j && Array.isArray(j.features) ? j.features : [];
     // surface the first Red Flag Warning / Fire Weather Watch
     for (const f of feats) {
       const ev = (f.properties && f.properties.event) || '';
@@ -124,7 +129,7 @@ async function fetchWaAlerts() {
     const j = await r.json();
     return {
       configured: !!(j && j.configured),
-      alerts: (j && Array.isArray(j.alerts)) ? j.alerts : [],
+      alerts: j && Array.isArray(j.alerts) ? j.alerts : [],
     };
   } catch {
     return { configured: false, alerts: [] };
@@ -153,12 +158,18 @@ function readCache() {
     const raw = sessionStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const obj = JSON.parse(raw);
-    if (!obj || (Date.now() - obj.t) > TTL_MS) return null;
+    if (!obj || Date.now() - obj.t > TTL_MS) return null;
     return obj.data;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 function writeCache(data) {
-  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data })); } catch { /* ignore quota */ }
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), data }));
+  } catch {
+    /* ignore quota */
+  }
 }
 
 let memCache = null;
@@ -188,7 +199,9 @@ function computeAll(data) {
       town,
       verdict,
       nearestFireKm: risk.nearestFireKm,
-      reason: degraded ? "Couldn't load live data - drive with caution and check TripCheck." : risk.reason,
+      reason: degraded
+        ? "Couldn't load live data - drive with caution and check TripCheck."
+        : risk.reason,
       hazard: risk.hazard,
       incidentHits: risk.incidentHits,
       waHits: risk.waHits || [],
@@ -215,7 +228,11 @@ export function createRegional(map) {
     layers.highlightRoute(townId);
     const r = current && current.results.find((x) => x.town.id === townId);
     if (r) {
-      map.flyTo({ center: [r.town.lon, r.town.lat], zoom: Math.max(map.getZoom(), 8.5), duration: 600 });
+      map.flyTo({
+        center: [r.town.lon, r.town.lat],
+        zoom: Math.max(map.getZoom(), 8.5),
+        duration: 600,
+      });
     }
     // deep link ?to=
     const u = new URL(location.href);
@@ -223,9 +240,11 @@ export function createRegional(map) {
     history.replaceState(null, '', u);
   }
 
-  function onMaps() { /* href handles it */ }
+  function onMaps() {
+    /* href handles it */
+  }
 
-  let inspectHandler = null;   // set by main.js: (bbox) => runAnalysis
+  let inspectHandler = null; // set by main.js: (bbox) => runAnalysis
   let drawCustomHandler = null;
 
   function onInspect(townId) {
@@ -254,7 +273,11 @@ export function createRegional(map) {
     let data = memCache || readCache();
     if (!data) {
       const [fire, inc, alert, wind, wa] = await Promise.all([
-        fetchFire(), fetchIncidents(), fetchAlert(), fetchWind(), fetchWaAlerts(),
+        fetchFire(),
+        fetchIncidents(),
+        fetchAlert(),
+        fetchWind(),
+        fetchWaAlerts(),
       ]);
       data = {
         fireOk: !!fire.ok,
@@ -297,7 +320,12 @@ export function createRegional(map) {
     // static panel so the user sees structure before data lands
     render({
       hub: HUB,
-      results: stat.map((s) => ({ ...s, nearestFireKm: Infinity, reason: 'Loading live fire and road data...', incidentHits: [] })),
+      results: stat.map((s) => ({
+        ...s,
+        nearestFireKm: Infinity,
+        reason: 'Loading live fire and road data...',
+        incidentHits: [],
+      })),
       dataDegraded: false,
       alert: null,
     });
@@ -306,8 +334,12 @@ export function createRegional(map) {
 
   return {
     start,
-    setInspectHandler: (fn) => { inspectHandler = fn; },
-    setDrawCustomHandler: (fn) => { drawCustomHandler = fn; },
+    setInspectHandler: (fn) => {
+      inspectHandler = fn;
+    },
+    setDrawCustomHandler: (fn) => {
+      drawCustomHandler = fn;
+    },
     destroy: () => layers.destroy(),
   };
 }
