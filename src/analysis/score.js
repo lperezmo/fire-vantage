@@ -41,10 +41,16 @@ function deriveLayers(parcel) {
     }
   }
   const localMean = (c, r, rad) => {
-    const c0 = Math.max(0, c - rad), c1 = Math.min(gridW - 1, c + rad);
-    const r0 = Math.max(0, r - rad), r1 = Math.min(gridH - 1, r + rad);
+    const c0 = Math.max(0, c - rad),
+      c1 = Math.min(gridW - 1, c + rad);
+    const r0 = Math.max(0, r - rad),
+      r1 = Math.min(gridH - 1, r + rad);
     const area = (c1 - c0 + 1) * (r1 - r0 + 1);
-    const s = sat[(r1 + 1) * sw + (c1 + 1)] - sat[r0 * sw + (c1 + 1)] - sat[(r1 + 1) * sw + c0] + sat[r0 * sw + c0];
+    const s =
+      sat[(r1 + 1) * sw + (c1 + 1)] -
+      sat[r0 * sw + (c1 + 1)] -
+      sat[(r1 + 1) * sw + c0] +
+      sat[r0 * sw + c0];
     return s / area;
   };
 
@@ -52,16 +58,22 @@ function deriveLayers(parcel) {
 }
 
 function normalize(arr) {
-  let min = Infinity, max = -Infinity;
-  for (const v of arr) { if (v < min) min = v; if (v > max) max = v; }
+  let min = Infinity,
+    max = -Infinity;
+  for (const v of arr) {
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
   const span = max - min || 1;
   return (v) => (v - min) / span;
 }
 
 // Local terrain slope (degrees) at a grid cell.
 function slopeDegAt(heights, gridW, gridH, c, r, mpp) {
-  const cl = Math.max(c - 1, 0), cr = Math.min(c + 1, gridW - 1);
-  const ru = Math.max(r - 1, 0), rd = Math.min(r + 1, gridH - 1);
+  const cl = Math.max(c - 1, 0),
+    cr = Math.min(c + 1, gridW - 1);
+  const ru = Math.max(r - 1, 0),
+    rd = Math.min(r + 1, gridH - 1);
   const dx = (heights[r * gridW + cr] - heights[r * gridW + cl]) / ((cr - cl) * mpp);
   const dz = (heights[rd * gridW + c] - heights[ru * gridW + c]) / ((rd - ru) * mpp);
   return (Math.atan(Math.hypot(dx, dz)) * 180) / Math.PI;
@@ -72,8 +84,10 @@ function slopeDegAt(heights, gridW, gridH, c, r, mpp) {
 // plus the slope magnitude in degrees. du>0 means ground rises to the east; dv>0
 // means ground rises to the south (toward higher row index).
 function gradientAt(heights, gridW, gridH, c, r, mpp) {
-  const cl = Math.max(c - 1, 0), cr = Math.min(c + 1, gridW - 1);
-  const ru = Math.max(r - 1, 0), rd = Math.min(r + 1, gridH - 1);
+  const cl = Math.max(c - 1, 0),
+    cr = Math.min(c + 1, gridW - 1);
+  const ru = Math.max(r - 1, 0),
+    rd = Math.min(r + 1, gridH - 1);
   // east-positive, south-positive (matches grid: col+ = east, row+ = south)
   const ge = (heights[r * gridW + cr] - heights[r * gridW + cl]) / ((cr - cl) * mpp);
   const gs = (heights[rd * gridW + c] - heights[ru * gridW + c]) / ((rd - ru) * mpp);
@@ -84,11 +98,17 @@ function gradientAt(heights, gridW, gridH, c, r, mpp) {
 
 // Mean fuel density (0..1) in a small box around a cell.
 function localFuel(fuel, gridW, gridH, c, r, rad) {
-  const c0 = Math.max(0, c - rad), c1 = Math.min(gridW - 1, c + rad);
-  const r0 = Math.max(0, r - rad), r1 = Math.min(gridH - 1, r + rad);
-  let sum = 0, n = 0;
+  const c0 = Math.max(0, c - rad),
+    c1 = Math.min(gridW - 1, c + rad);
+  const r0 = Math.max(0, r - rad),
+    r1 = Math.min(gridH - 1, r + rad);
+  let sum = 0,
+    n = 0;
   for (let rr = r0; rr <= r1; rr++) {
-    for (let cc = c0; cc <= c1; cc++) { sum += fuel[rr * gridW + cc]; n++; }
+    for (let cc = c0; cc <= c1; cc++) {
+      sum += fuel[rr * gridW + cc];
+      n++;
+    }
   }
   return n ? sum / n / 255 : 0;
 }
@@ -181,8 +201,10 @@ export function analyze(parcel, ui, fire, wind) {
   const promRad = Math.min(60, Math.max(6, Math.round(280 / metersPerPx)));
   const fuelRad = Math.min(8, Math.max(2, Math.round(40 / metersPerPx)));
 
-  const lonOf = (col) => bbox.west + (gridW <= 1 ? 0 : (col / (gridW - 1)) * (bbox.east - bbox.west));
-  const latOf = (row) => bbox.north + (gridH <= 1 ? 0 : (row / (gridH - 1)) * (bbox.south - bbox.north));
+  const lonOf = (col) =>
+    bbox.west + (gridW <= 1 ? 0 : (col / (gridW - 1)) * (bbox.east - bbox.west));
+  const latOf = (row) =>
+    bbox.north + (gridH <= 1 ? 0 : (row / (gridH - 1)) * (bbox.south - bbox.north));
 
   // nearest active fire distance (km) from a candidate cell, over hotspots AND
   // perimeter vertices (equirectangular approx, same as fires.js).
@@ -190,7 +212,8 @@ export function analyze(parcel, ui, fire, wind) {
   const hotspots = (fire && fire.hotspots) || [];
   const nearestFireKm = (ox, oy) => {
     if (!perims.length && !hotspots.length) return Infinity;
-    const clon = lonOf(ox), clat = latOf(oy);
+    const clon = lonOf(ox),
+      clat = latOf(oy);
     const mPerDegLat = 111_320;
     let best = Infinity;
     for (const h of hotspots) {
@@ -202,8 +225,12 @@ export function analyze(parcel, ui, fire, wind) {
       if (d < best) best = d;
     }
     for (const f of perims) {
-      const ring = f && f.geometry &&
-        (f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates[0] && f.geometry.coordinates[0][0] : f.geometry.coordinates && f.geometry.coordinates[0]);
+      const ring =
+        f &&
+        f.geometry &&
+        (f.geometry.type === 'MultiPolygon'
+          ? f.geometry.coordinates[0] && f.geometry.coordinates[0][0]
+          : f.geometry.coordinates && f.geometry.coordinates[0]);
       if (!ring) continue;
       for (const pt of ring) {
         const mPerDegLon = 111_320 * Math.cos((((clat + pt[1]) / 2) * Math.PI) / 180);
@@ -217,13 +244,13 @@ export function analyze(parcel, ui, fire, wind) {
   };
 
   // --- per-candidate factor layers ---
-  const losA = new Float32Array(cgW * cgH);   // visibility of fire-prone ground
-  const riskA = new Float32Array(cgW * cgH);  // local spread risk
+  const losA = new Float32Array(cgW * cgH); // visibility of fire-prone ground
+  const riskA = new Float32Array(cgW * cgH); // local spread risk
   const fuelOpenA = new Float32Array(cgW * cgH); // open, low-fuel ground (0..1)
-  const groundA = new Float32Array(cgW * cgH);   // level, low-fuel staging pad (0..1)
-  const slopeSafeA = new Float32Array(cgW * cgH);// off the upslope/downwind path (0..1)
-  const farA = new Float32Array(cgW * cgH);   // distance from active fire (0..1)
-  const promA = new Float32Array(cgW * cgH);  // prominence (m above surroundings)
+  const groundA = new Float32Array(cgW * cgH); // level, low-fuel staging pad (0..1)
+  const slopeSafeA = new Float32Array(cgW * cgH); // off the upslope/downwind path (0..1)
+  const farA = new Float32Array(cgW * cgH); // distance from active fire (0..1)
+  const promA = new Float32Array(cgW * cgH); // prominence (m above surroundings)
   const nearFireKmA = new Float32Array(cgW * cgH);
 
   // distances normalized over the parcel diagonal (km) for the "far" factor
@@ -262,7 +289,9 @@ export function analyze(parcel, ui, fire, wind) {
     }
   }
 
-  const nLos = normalize(losA), nProm = normalize(promA), nRiskA = normalize(riskA);
+  const nLos = normalize(losA),
+    nProm = normalize(promA),
+    nRiskA = normalize(riskA);
 
   // --- compose the candidate score by goal mode ---
   const score = new Float32Array(cgW * cgH);
@@ -295,12 +324,14 @@ export function analyze(parcel, ui, fire, wind) {
   const taken = new Uint8Array(cgW * cgH);
   for (const idx of order) {
     if (picked.length >= 6) break;
-    const cx = idx % cgW, cy = (idx / cgW) | 0;
+    const cx = idx % cgW,
+      cy = (idx / cgW) | 0;
     if (taken[idx]) continue;
     picked.push({ cx, cy, idx, s: score[idx] });
     for (let dy = -spacing; dy <= spacing; dy++) {
       for (let dx = -spacing; dx <= spacing; dx++) {
-        const nx = cx + dx, ny = cy + dy;
+        const nx = cx + dx,
+          ny = cy + dy;
         if (nx >= 0 && ny >= 0 && nx < cgW && ny < cgH) taken[ny * cgW + nx] = 1;
       }
     }
@@ -335,39 +366,78 @@ export function analyze(parcel, ui, fire, wind) {
       contrib = [
         { v: localRisk, t: `high spread-risk ground (about ${rPct}% of peak risk here)` },
         { v: 1 - fOpen, t: 'heavy continuous fuel feeds the fire' },
-        { v: Math.min(1, (slopeDegAt(heights, gridW, gridH, ox, oy, metersPerPx)) / 30), t: 'steep slope drives fire uphill fast' },
-        { v: fireProx[i], t: fireProx[i] > 0.5 ? 'on or beside an active fire perimeter' : 'near active fire detections' },
-      ].filter((x) => x.v > 0.05).sort((a, b) => b.v - a.v);
+        {
+          v: Math.min(1, slopeDegAt(heights, gridW, gridH, ox, oy, metersPerPx) / 30),
+          t: 'steep slope drives fire uphill fast',
+        },
+        {
+          v: fireProx[i],
+          t:
+            fireProx[i] > 0.5
+              ? 'on or beside an active fire perimeter'
+              : 'near active fire detections',
+        },
+      ]
+        .filter((x) => x.v > 0.05)
+        .sort((a, b) => b.v - a.v);
     } else if (goalMode === 'lookout') {
       contrib = [
-        { v: w.los * nLos(losA[pk.idx]), t: `sees about ${visibleFireAcres} acres of fire-prone ground` },
-        { v: w.slope * nProm(promA[pk.idx]), t: prom > 2 ? `sits ${Math.round(prom)} m above the surrounding ground` : 'reads the terrain well for a wide field of view' },
+        {
+          v: w.los * nLos(losA[pk.idx]),
+          t: `sees about ${visibleFireAcres} acres of fire-prone ground`,
+        },
+        {
+          v: w.slope * nProm(promA[pk.idx]),
+          t:
+            prom > 2
+              ? `sits ${Math.round(prom)} m above the surrounding ground`
+              : 'reads the terrain well for a wide field of view',
+        },
         { v: w.ground * groundA[pk.idx], t: 'open, accessible ground to set up a watch' },
-      ].filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
+      ]
+        .filter((x) => x.v > 0)
+        .sort((a, b) => b.v - a.v);
     } else {
       contrib = [
-        { v: w.spread * farA[pk.idx], t: Number.isFinite(fkm) ? `${fkm.toFixed(1)} km from the nearest active fire` : 'no active fire near this parcel' },
+        {
+          v: w.spread * farA[pk.idx],
+          t: Number.isFinite(fkm)
+            ? `${fkm.toFixed(1)} km from the nearest active fire`
+            : 'no active fire near this parcel',
+        },
         { v: w.slope * slopeSafeA[pk.idx], t: 'off the upslope, downwind spread path' },
         { v: w.fuel * fOpen, t: 'open, low-fuel ground' },
         { v: w.ground * groundA[pk.idx], t: 'level, accessible staging pad' },
-        { v: w.los * nLos(losA[pk.idx]), t: `can watch about ${visibleFireAcres} acres of fire-prone ground` },
-      ].filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
+        {
+          v: w.los * nLos(losA[pk.idx]),
+          t: `can watch about ${visibleFireAcres} acres of fire-prone ground`,
+        },
+      ]
+        .filter((x) => x.v > 0)
+        .sort((a, b) => b.v - a.v);
     }
 
-    const why = capitalize(contrib.slice(0, 3).map((x) => x.t).join(' / '));
+    const why = capitalize(
+      contrib
+        .slice(0, 3)
+        .map((x) => x.t)
+        .join(' / '),
+    );
     const rel = sMax > sMin ? (pk.s - sMin) / (sMax - sMin) : 1;
     const rating = Math.round(55 + rel * 44); // 55..99
 
     return {
       rank: rank + 1,
-      lon: lonOf(ox), lat: latOf(oy),
+      lon: lonOf(ox),
+      lat: latOf(oy),
       elevation: Math.round(heights[i]),
       rating,
       why,
       visibleFireAcres,
       nearestFireKm: fkm,
       footprint: fp.vis,
-      ox, oy,
+      ox,
+      oy,
     };
   });
 
@@ -382,10 +452,17 @@ export function analyze(parcel, ui, fire, wind) {
   }
 
   return {
-    gridW, gridH, cgW, cgH, stride,
-    bbox, metersPerPx,
-    heights, fuel,
-    risk, spots,
+    gridW,
+    gridH,
+    cgW,
+    cgH,
+    stride,
+    bbox,
+    metersPerPx,
+    heights,
+    fuel,
+    risk,
+    spots,
     demZoom: parcel.demZoom,
     fire: {
       ok: !!(fire && fire.ok),

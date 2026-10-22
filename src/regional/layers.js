@@ -21,11 +21,17 @@ export const VERDICT_COLOR = {
 // Run fn once the style is ready (addSource/addLayer throw otherwise). Mirrors
 // the proven cold-start poll in ui/map.js.
 export function whenStyle(map, fn) {
-  if (map.isStyleLoaded()) { fn(); return; }
+  if (map.isStyleLoaded()) {
+    fn();
+    return;
+  }
   let done = false;
   const tryRun = () => {
     if (done) return;
-    if (map.isStyleLoaded()) { done = true; fn(); }
+    if (map.isStyleLoaded()) {
+      done = true;
+      fn();
+    }
   };
   map.on('styledata', tryRun);
   map.on('load', tryRun);
@@ -70,12 +76,16 @@ export function createRegionalLayers(map) {
       } else {
         map.addSource(ROUTE_SOURCE, { type: 'geojson', data });
         map.addLayer({
-          id: ROUTE_CASE, type: 'line', source: ROUTE_SOURCE,
+          id: ROUTE_CASE,
+          type: 'line',
+          source: ROUTE_SOURCE,
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: { 'line-color': '#0b0805', 'line-width': 7, 'line-opacity': 0.6 },
         });
         map.addLayer({
-          id: ROUTE_LINE, type: 'line', source: ROUTE_SOURCE,
+          id: ROUTE_LINE,
+          type: 'line',
+          source: ROUTE_SOURCE,
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: { 'line-color': ['get', 'color'], 'line-width': 4 },
         });
@@ -86,10 +96,16 @@ export function createRegionalLayers(map) {
   function highlightRoute(townId) {
     whenStyle(map, () => {
       if (!map.getLayer(ROUTE_LINE)) return;
-      map.setPaintProperty(ROUTE_LINE, 'line-width',
-        townId ? ['case', ['==', ['get', 'id'], townId], 7, 3] : 4);
-      map.setPaintProperty(ROUTE_LINE, 'line-opacity',
-        townId ? ['case', ['==', ['get', 'id'], townId], 1, 0.45] : 1);
+      map.setPaintProperty(
+        ROUTE_LINE,
+        'line-width',
+        townId ? ['case', ['==', ['get', 'id'], townId], 7, 3] : 4,
+      );
+      map.setPaintProperty(
+        ROUTE_LINE,
+        'line-opacity',
+        townId ? ['case', ['==', ['get', 'id'], townId], 1, 0.45] : 1,
+      );
     });
   }
 
@@ -117,15 +133,28 @@ export function createRegionalLayers(map) {
     // hub (distinct), labeled "Pendleton"
     const hubParts = dotWithLabel(hub.name, 'hub-mk', `${hub.name} (you are here)`);
     hubParts.wrap.classList.add('is-hub');
-    townMarkers.push(new maplibregl.Marker({ element: hubParts.wrap, anchor: 'center' })
-      .setLngLat([hub.lon, hub.lat]).addTo(map));
+    townMarkers.push(
+      new maplibregl.Marker({ element: hubParts.wrap, anchor: 'center' })
+        .setLngLat([hub.lon, hub.lat])
+        .addTo(map),
+    );
 
     for (const r of routeResults) {
-      const parts = dotWithLabel(r.town.name, `town-mk verdict-${r.verdict}`, `${r.town.name} - ${r.verdict.toUpperCase()}`);
+      const parts = dotWithLabel(
+        r.town.name,
+        `town-mk verdict-${r.verdict}`,
+        `${r.town.name} - ${r.verdict.toUpperCase()}`,
+      );
       parts.wrap.style.cursor = 'pointer';
-      parts.wrap.addEventListener('click', (ev) => { ev.stopPropagation(); onSelect(r.town.id); });
-      townMarkers.push(new maplibregl.Marker({ element: parts.wrap, anchor: 'center' })
-        .setLngLat([r.town.lon, r.town.lat]).addTo(map));
+      parts.wrap.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        onSelect(r.town.id);
+      });
+      townMarkers.push(
+        new maplibregl.Marker({ element: parts.wrap, anchor: 'center' })
+          .setLngLat([r.town.lon, r.town.lat])
+          .addTo(map),
+      );
     }
   }
 
@@ -139,14 +168,20 @@ export function createRegionalLayers(map) {
     whenStyle(map, () => {
       const feats = (hotspots || [])
         .filter((h) => Number.isFinite(h.lon) && Number.isFinite(h.lat))
-        .map((h) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [h.lon, h.lat] } }));
+        .map((h) => ({
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Point', coordinates: [h.lon, h.lat] },
+        }));
       const data = { type: 'FeatureCollection', features: feats };
       if (map.getSource(HOTSPOT_SOURCE)) {
         map.getSource(HOTSPOT_SOURCE).setData(data);
       } else {
         map.addSource(HOTSPOT_SOURCE, { type: 'geojson', data });
         map.addLayer({
-          id: HOTSPOT_LAYER, type: 'circle', source: HOTSPOT_SOURCE,
+          id: HOTSPOT_LAYER,
+          type: 'circle',
+          source: HOTSPOT_SOURCE,
           paint: {
             'circle-radius': 4,
             'circle-color': '#ffdd33',
@@ -162,23 +197,33 @@ export function createRegionalLayers(map) {
   // ---- fire perimeters (regional copy; same red look as box mode) ----
   function setFirePerimeters(perimFC) {
     whenStyle(map, () => {
-      const data = (perimFC && Array.isArray(perimFC.features))
-        ? perimFC : { type: 'FeatureCollection', features: [] };
+      const data =
+        perimFC && Array.isArray(perimFC.features)
+          ? perimFC
+          : { type: 'FeatureCollection', features: [] };
       if (map.getSource(FIRE_SOURCE)) {
         map.getSource(FIRE_SOURCE).setData(data);
       } else {
         map.addSource(FIRE_SOURCE, { type: 'geojson', data });
         map.addLayer({
-          id: FIRE_FILL, type: 'fill', source: FIRE_SOURCE,
+          id: FIRE_FILL,
+          type: 'fill',
+          source: FIRE_SOURCE,
           paint: { 'fill-color': '#ff3b30', 'fill-opacity': 0.12 },
         });
         map.addLayer({
-          id: FIRE_LINE, type: 'line', source: FIRE_SOURCE,
+          id: FIRE_LINE,
+          type: 'line',
+          source: FIRE_SOURCE,
           paint: { 'line-color': '#ff3b30', 'line-width': 2 },
         });
         map.on('click', FIRE_FILL, onPerimClick);
-        map.on('mouseenter', FIRE_FILL, () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', FIRE_FILL, () => { map.getCanvas().style.cursor = ''; });
+        map.on('mouseenter', FIRE_FILL, () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', FIRE_FILL, () => {
+          map.getCanvas().style.cursor = '';
+        });
       }
     });
   }
@@ -198,25 +243,41 @@ export function createRegionalLayers(map) {
     if (firePopup) firePopup.remove();
     firePopup = new maplibregl.Popup({ closeButton: true, offset: 8 })
       .setLngLat(e.lngLat)
-      .setHTML(`<div style="font:12px system-ui,sans-serif;color:#1c1411">${bits.join(' - ')}</div>`)
+      .setHTML(
+        `<div style="font:12px system-ui,sans-serif;color:#1c1411">${bits.join(' - ')}</div>`,
+      )
       .addTo(map);
   }
 
   // ---- fit to all towns ----
   function fitToTowns(hub, towns) {
     whenStyle(map, () => {
-      let minX = hub.lon, maxX = hub.lon, minY = hub.lat, maxY = hub.lat;
+      let minX = hub.lon,
+        maxX = hub.lon,
+        minY = hub.lat,
+        maxY = hub.lat;
       for (const t of towns) {
-        minX = Math.min(minX, t.lon); maxX = Math.max(maxX, t.lon);
-        minY = Math.min(minY, t.lat); maxY = Math.max(maxY, t.lat);
+        minX = Math.min(minX, t.lon);
+        maxX = Math.max(maxX, t.lon);
+        minY = Math.min(minY, t.lat);
+        maxY = Math.max(maxY, t.lat);
       }
-      map.fitBounds([[minX, minY], [maxX, maxY]], { padding: { top: 60, bottom: 60, left: 60, right: 60 }, duration: 0, maxZoom: 9 });
+      map.fitBounds(
+        [
+          [minX, minY],
+          [maxX, maxY],
+        ],
+        { padding: { top: 60, bottom: 60, left: 60, right: 60 }, duration: 0, maxZoom: 9 },
+      );
     });
   }
 
   function destroy() {
     clearTownMarkers();
-    if (firePopup) { firePopup.remove(); firePopup = null; }
+    if (firePopup) {
+      firePopup.remove();
+      firePopup = null;
+    }
     map.off('click', FIRE_FILL, onPerimClick);
     for (const id of [ROUTE_LINE, ROUTE_CASE, HOTSPOT_LAYER, FIRE_FILL, FIRE_LINE]) {
       if (map.getLayer(id)) map.removeLayer(id);
@@ -226,7 +287,20 @@ export function createRegionalLayers(map) {
     }
   }
 
-  return { setRoutes, highlightRoute, setTownMarkers, clearTownMarkers, setHotspots, setFirePerimeters, fitToTowns, destroy };
+  return {
+    setRoutes,
+    highlightRoute,
+    setTownMarkers,
+    clearTownMarkers,
+    setHotspots,
+    setFirePerimeters,
+    fitToTowns,
+    destroy,
+  };
 }
 
-const escapeHtml = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const escapeHtml = (s) =>
+  String(s).replace(
+    /[<>&"]/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c],
+  );

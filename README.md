@@ -87,11 +87,11 @@ No API keys. Everything runs on free, keyless public data:
    Open-Meteo and feed both the display and the spread model.
 5. It models spread risk. For every cell the app blends three transparent factors:
 
-   | Factor | What raises risk |
-   | --- | --- |
-   | Fuel | Denser canopy/vegetation carries fire faster |
-   | Slope | Fire spreads faster uphill, so upslope cells are riskier |
-   | Wind | Cells downwind of higher fuel and of active fire are riskier |
+   | Factor | What raises risk                                             |
+   | ------ | ------------------------------------------------------------ |
+   | Fuel   | Denser canopy/vegetation carries fire faster                 |
+   | Slope  | Fire spreads faster uphill, so upslope cells are riskier     |
+   | Wind   | Cells downwind of higher fuel and of active fire are riskier |
 
    Cells on or next to an active perimeter or hotspot are treated as maximum risk,
    and the risk decays with distance from active fire.
@@ -151,20 +151,24 @@ browser; it is read server-side from the env var.
 
 #### Environment variables
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `WSDOT_ACCESS_CODE` | No | Free WSDOT Traveler Information API access code. When set, the `/api/wa-alerts` proxy pulls Washington HighwayAlerts for the Walla Walla corridor and the Walla Walla leg reflects WSDOT closures. When unset, the app degrades gracefully to the honest "Washington roads not included yet" note. Set it in the Vercel project environment (and in a local `.env`, copied from `.env.example`, for dev). Request a free code at https://wsdot.wa.gov/traffic/api/ |
+| Variable            | Required | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `WSDOT_ACCESS_CODE` | No       | Free WSDOT Traveler Information API access code. When set, the `/api/wa-alerts` proxy pulls Washington HighwayAlerts for the Walla Walla corridor and the Walla Walla leg reflects WSDOT closures. When unset, the app degrades gracefully to the honest "Washington roads not included yet" note. Set it in the Vercel project environment (and in a local `.env`, copied from `.env.example`, for dev). Request a free code at https://wsdot.wa.gov/traffic/api/ |
 
 ## Run locally
 
 ```sh
-npm install
-npm run dev      # http://localhost:5173, serverless proxies mirrored as dev middleware
-npm run build    # production build into dist/
-npm run preview  # serve the production build
+bun install
+bun run dev      # http://localhost:5173, serverless proxies mirrored as dev middleware
+bun run build    # production build into dist/
+bun run preview  # serve the production build
+bun run check    # bun fmt --check, bun lint and the build
 ```
 
-Node 18 or newer. The `/api/tiles`, `/api/fires`, and `/api/wa-alerts` routes run
+Bun 1.4 or newer. Vite is still the dev server and bundler; the scripts run it on
+the Bun runtime, which also loads `.env` into `process.env` for the dev proxies.
+`bun fmt` and `bun lint` only exist on Bun canary for now (`bun upgrade --canary`),
+so CI runs them on canary and keeps the build job on the pinned Bun release. The `/api/tiles`, `/api/fires`, and `/api/wa-alerts` routes run
 as Vercel serverless functions in production and as Vite dev middleware locally,
 so the app behaves identically in both. To exercise the Washington alerts path in
 dev, copy `.env.example` to `.env` and set `WSDOT_ACCESS_CODE`; without it the WA

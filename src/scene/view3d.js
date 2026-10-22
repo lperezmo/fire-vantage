@@ -21,7 +21,12 @@ export function openViewer(canvas, result, spot) {
   scene.background = new THREE.Color(0xb5a89a);
   scene.fog = new THREE.Fog(0xb5a89a, W * 0.9, W * 3.2);
 
-  const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight || 1.6, 1, 60000);
+  const camera = new THREE.PerspectiveCamera(
+    60,
+    canvas.clientWidth / canvas.clientHeight || 1.6,
+    1,
+    60000,
+  );
 
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -36,7 +41,8 @@ export function openViewer(canvas, result, spot) {
   const geo = new THREE.BufferGeometry();
   const pos = new Float32Array(gridW * gridH * 3);
   const uv = new Float32Array(gridW * gridH * 2);
-  const halfW = W / 2, halfH = H / 2;
+  const halfW = W / 2,
+    halfH = H / 2;
   for (let r = 0; r < gridH; r++) {
     for (let c = 0; c < gridW; c++) {
       const i = r * gridW + c;
@@ -56,7 +62,11 @@ export function openViewer(canvas, result, spot) {
   }
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  geo.setIndex(gridW * gridH > 65000 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1));
+  geo.setIndex(
+    gridW * gridH > 65000
+      ? new THREE.Uint32BufferAttribute(idx, 1)
+      : new THREE.Uint16BufferAttribute(idx, 1),
+  );
   geo.computeVertexNormals();
 
   const texture = buildTexture(result, spot);
@@ -68,18 +78,18 @@ export function openViewer(canvas, result, spot) {
   const vWorld = new THREE.Vector3(
     spot.ox * metersPerPx - halfW,
     spotGround,
-    spot.oy * metersPerPx - halfH
+    spot.oy * metersPerPx - halfH,
   );
   const coneH = Math.max(28, W * 0.04);
   const marker = new THREE.Mesh(
     new THREE.ConeGeometry(Math.max(8, W * 0.012), coneH, 4),
-    new THREE.MeshBasicMaterial({ color: 0x22d3ee })
+    new THREE.MeshBasicMaterial({ color: 0x22d3ee }),
   );
   marker.position.copy(vWorld).y += coneH / 2 + 6;
   scene.add(marker);
   const stem = new THREE.Mesh(
     new THREE.CylinderGeometry(1.5, 1.5, coneH, 6),
-    new THREE.MeshBasicMaterial({ color: 0x0c4a52 })
+    new THREE.MeshBasicMaterial({ color: 0x0c4a52 }),
   );
   stem.position.copy(vWorld).y += coneH / 2 + 6;
   scene.add(stem);
@@ -94,20 +104,17 @@ export function openViewer(canvas, result, spot) {
   // and east toward +x. So for bearing b: dx = sin(b), dz = -cos(b).
   try {
     if (result.wind && typeof result.wind.dirDeg === 'number') {
-      const toBearing = (result.wind.dirDeg + 180) * Math.PI / 180;
+      const toBearing = ((result.wind.dirDeg + 180) * Math.PI) / 180;
       const dir = new THREE.Vector3(Math.sin(toBearing), 0, -Math.cos(toBearing)).normalize();
       const len = Math.max(W, H) * 0.28;
-      const hoverY = spotGround + Math.max(60, W * 0.10);
+      const hoverY = spotGround + Math.max(60, W * 0.1);
       const origin = new THREE.Vector3(0, hoverY, 0); // parcel centre
-      const arrow = new THREE.ArrowHelper(
-        dir, origin, len, 0xffb347,
-        len * 0.28, len * 0.16
-      );
+      const arrow = new THREE.ArrowHelper(dir, origin, len, 0xffb347, len * 0.28, len * 0.16);
       // thicken the shaft a touch so it reads at parcel scale
       if (arrow.line && arrow.line.material) arrow.line.material.linewidth = 2;
       scene.add(arrow);
     }
-  } catch (e) {
+  } catch {
     // defensive: missing or odd wind must never break the viewer
   }
 
@@ -146,7 +153,8 @@ function buildTexture(result, spot) {
   const tw = texBitmap ? texW : gridW;
   const th = texBitmap ? texH : gridH;
   const cv = document.createElement('canvas');
-  cv.width = tw; cv.height = th;
+  cv.width = tw;
+  cv.height = th;
   const ctx = cv.getContext('2d');
   if (texBitmap) {
     ctx.drawImage(texBitmap, 0, 0);
@@ -169,14 +177,16 @@ function buildTexture(result, spot) {
   // ---- spread-risk red tint (sampled/scaled up from cgW x cgH) ----
   try {
     const risk = result.risk;
-    const cgW = result.cgW, cgH = result.cgH;
+    const cgW = result.cgW,
+      cgH = result.cgH;
     if (risk && cgW && cgH) {
       // find max risk for normalisation so the tint always reads
       let maxR = 0;
       for (let i = 0; i < risk.length; i++) if (risk[i] > maxR) maxR = risk[i];
       if (maxR > 0) {
         const rv = document.createElement('canvas');
-        rv.width = cgW; rv.height = cgH;
+        rv.width = cgW;
+        rv.height = cgH;
         const rctx = rv.getContext('2d');
         const rimg = rctx.createImageData(cgW, cgH);
         for (let i = 0; i < cgW * cgH; i++) {
@@ -191,7 +201,7 @@ function buildTexture(result, spot) {
         ctx.drawImage(rv, 0, 0, tw, th);
       }
     }
-  } catch (e) {
+  } catch {
     // defensive: a missing or malformed risk grid must never break the texture
   }
 
@@ -200,7 +210,8 @@ function buildTexture(result, spot) {
     const fp = spot && spot.footprint;
     if (fp) {
       const ov = document.createElement('canvas');
-      ov.width = gridW; ov.height = gridH;
+      ov.width = gridW;
+      ov.height = gridH;
       const octx = ov.getContext('2d');
       const oimg = octx.createImageData(gridW, gridH);
       for (let i = 0; i < fp.length; i++) {
@@ -214,7 +225,7 @@ function buildTexture(result, spot) {
       octx.putImageData(oimg, 0, 0);
       ctx.drawImage(ov, 0, 0, tw, th);
     }
-  } catch (e) {
+  } catch {
     // defensive
   }
 
@@ -227,7 +238,10 @@ function buildTexture(result, spot) {
 export function disposeViewer() {
   if (raf) cancelAnimationFrame(raf);
   raf = null;
-  if (controls) { controls.dispose(); controls = null; }
+  if (controls) {
+    controls.dispose();
+    controls = null;
+  }
   if (renderer) {
     if (renderer._onResize) window.removeEventListener('resize', renderer._onResize);
     renderer.dispose();

@@ -23,11 +23,11 @@ function cellLat(bbox, gridH, row) {
 function pointInRing(lon, lat, ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0], yi = ring[i][1];
-    const xj = ring[j][0], yj = ring[j][1];
-    const intersect =
-      (yi > lat) !== (yj > lat) &&
-      lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    const xi = ring[i][0],
+      yi = ring[i][1];
+    const xj = ring[j][0],
+      yj = ring[j][1];
+    const intersect = yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
     if (intersect) inside = !inside;
   }
   return inside;
@@ -169,9 +169,15 @@ export function buildFireProximity(parcel, fire) {
       for (let k = 0; k < prepared.length; k++) {
         const b = prepared[k].bounds;
         if (lon < b.minX || lon > b.maxX || lat < b.minY || lat > b.maxY) continue;
-        if (pointInGeometry(lon, lat, prepared[k].geom)) { inside = true; break; }
+        if (pointInGeometry(lon, lat, prepared[k].geom)) {
+          inside = true;
+          break;
+        }
       }
-      if (inside) { out[ci] = 1; continue; }
+      if (inside) {
+        out[ci] = 1;
+        continue;
+      }
 
       // otherwise, distance falloff from the nearest hotspot
       let nearM = Infinity;

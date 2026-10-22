@@ -10,10 +10,10 @@
 import { metersBetween, geometryBounds } from '../data/geomath.js';
 
 // ---- thresholds (named constants, all in km) ----
-export const AVOID_KM = 2;      // fire or closure/wildfire incident within this -> AVOID
-export const CAUTION_KM = 8;    // fire within this (about 5 mi) -> CAUTION
-export const INCIDENT_KM = 2;   // any ODOT incident within this counts for the route
-export const SAMPLE_KM = 2;     // route is densified to a sample roughly every this far
+export const AVOID_KM = 2; // fire or closure/wildfire incident within this -> AVOID
+export const CAUTION_KM = 8; // fire within this (about 5 mi) -> CAUTION
+export const INCIDENT_KM = 2; // any ODOT incident within this counts for the route
+export const SAMPLE_KM = 2; // route is densified to a sample roughly every this far
 
 export const VERDICT = { AVOID: 'avoid', CAUTION: 'caution', CLEAR: 'clear', UNKNOWN: 'unknown' };
 // numeric severity so we can take the worst across hazards
@@ -30,14 +30,19 @@ export function pointToSegmentKm(plon, plat, alon, alat, blon, blat) {
   const latRef = (alat + blat) / 2;
   const mPerDegLat = 111_320;
   const mPerDegLon = 111_320 * Math.cos((latRef * Math.PI) / 180);
-  const ax = 0, ay = 0;
-  const bx = (blon - alon) * mPerDegLon, by = (blat - alat) * mPerDegLat;
-  const px = (plon - alon) * mPerDegLon, py = (plat - alat) * mPerDegLat;
-  const dx = bx - ax, dy = by - ay;
+  const ax = 0,
+    ay = 0;
+  const bx = (blon - alon) * mPerDegLon,
+    by = (blat - alat) * mPerDegLat;
+  const px = (plon - alon) * mPerDegLon,
+    py = (plat - alat) * mPerDegLat;
+  const dx = bx - ax,
+    dy = by - ay;
   const len2 = dx * dx + dy * dy;
   let t = len2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
   t = Math.max(0, Math.min(1, t));
-  const cx = ax + t * dx, cy = ay + t * dy;
+  const cx = ax + t * dx,
+    cy = ay + t * dy;
   return Math.hypot(px - cx, py - cy) / 1000;
 }
 
@@ -72,7 +77,10 @@ export function polylineToPolylineKm(a, b) {
 
 // Axis-aligned bbox of a polyline [[lon,lat],...], optionally padded (deg).
 function lineBounds(line, padDeg = 0) {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const p of line) {
     if (p[0] < minX) minX = p[0];
     if (p[0] > maxX) maxX = p[0];
@@ -89,7 +97,12 @@ function boundsOverlap(a, b) {
 // Distance (km) from a point to a route polyline only if the point is within a
 // padded bbox, else Infinity (cheap reject).
 function pointToRoutePrefiltered(plon, plat, route, routeBox) {
-  if (plon < routeBox.minX || plon > routeBox.maxX || plat < routeBox.minY || plat > routeBox.maxY) {
+  if (
+    plon < routeBox.minX ||
+    plon > routeBox.maxX ||
+    plat < routeBox.minY ||
+    plat > routeBox.maxY
+  ) {
     return Infinity;
   }
   return pointToPolylineKm(plon, plat, route);
@@ -98,7 +111,12 @@ function pointToRoutePrefiltered(plon, plat, route, routeBox) {
 // Pull the outer-ring vertices of a GeoJSON Polygon/MultiPolygon as polylines.
 function geometryRings(geom) {
   if (!geom) return [];
-  const polys = geom.type === 'MultiPolygon' ? geom.coordinates : (geom.type === 'Polygon' ? [geom.coordinates] : []);
+  const polys =
+    geom.type === 'MultiPolygon'
+      ? geom.coordinates
+      : geom.type === 'Polygon'
+        ? [geom.coordinates]
+        : [];
   const rings = [];
   for (const poly of polys) {
     if (poly && poly[0]) rings.push(poly[0]);
@@ -116,7 +134,8 @@ export function incidentForcesAvoid(inc) {
   const ev = (inc.eventType || '').toLowerCase();
   const txt = (inc.comments || '').toLowerCase();
   const sev = (inc.severity || '').toLowerCase();
-  if (sub.includes('wildfire') || txt.includes('wildfire') || txt.includes('wild fire')) return true;
+  if (sub.includes('wildfire') || txt.includes('wildfire') || txt.includes('wild fire'))
+    return true;
   if (txt.includes('closed') || txt.includes('closure') || cat.includes('closure')) return true;
   if (sev.includes('closed') || sev.includes('road closed')) return true;
   // explicit fire mentions in the free text
@@ -133,7 +152,8 @@ export function waAlertForcesAvoid(a) {
   const head = (a.headline || '').toLowerCase();
   const ext = (a.extended || '').toLowerCase();
   const txt = `${cat} ${head} ${ext}`;
-  if (txt.includes('wildfire') || txt.includes('wild fire') || txt.includes('brush fire')) return true;
+  if (txt.includes('wildfire') || txt.includes('wild fire') || txt.includes('brush fire'))
+    return true;
   if (txt.includes('closed') || txt.includes('closure')) return true;
   return false;
 }
@@ -141,7 +161,9 @@ export function waAlertForcesAvoid(a) {
 // A short human headline for a WSDOT alert (mirrors incidentHeadline).
 export function waAlertHeadline(a) {
   const where = a.road
-    ? (a.milePost != null ? `${a.road} MP ${a.milePost}` : a.road)
+    ? a.milePost != null
+      ? `${a.road} MP ${a.milePost}`
+      : a.road
     : 'a Washington highway';
   const what = a.headline || a.category || 'WSDOT alert';
   return `${what} on ${where}.`.trim();
@@ -163,16 +185,21 @@ export function computeRouteRisk(route, fire, incidents, waAlerts) {
   let insidePerimeter = false;
 
   // ---- fire: hotspots ----
-  const hotspots = (fire && Array.isArray(fire.hotspots)) ? fire.hotspots : [];
+  const hotspots = fire && Array.isArray(fire.hotspots) ? fire.hotspots : [];
   for (const h of hotspots) {
     if (!Number.isFinite(h.lon) || !Number.isFinite(h.lat)) continue;
     const d = pointToRoutePrefiltered(h.lon, h.lat, route, routeBox);
-    if (d < nearestFireKm) { nearestFireKm = d; nearestFireKind = 'hotspot'; }
+    if (d < nearestFireKm) {
+      nearestFireKm = d;
+      nearestFireKind = 'hotspot';
+    }
   }
 
   // ---- fire: perimeters (ring-to-route distance, bbox-prefiltered) ----
-  const perims = (fire && fire.perimeters && Array.isArray(fire.perimeters.features))
-    ? fire.perimeters.features : [];
+  const perims =
+    fire && fire.perimeters && Array.isArray(fire.perimeters.features)
+      ? fire.perimeters.features
+      : [];
   for (const f of perims) {
     if (!f || !f.geometry) continue;
     const gb = geometryBounds(f.geometry);
@@ -181,14 +208,22 @@ export function computeRouteRisk(route, fire, incidents, waAlerts) {
     const rings = geometryRings(f.geometry);
     for (const ring of rings) {
       const d = polylineToPolylineKm(route, ring);
-      if (d < nearestFireKm) { nearestFireKm = d; nearestFireKind = 'perimeter'; }
+      if (d < nearestFireKm) {
+        nearestFireKm = d;
+        nearestFireKind = 'perimeter';
+      }
     }
     // a route sample inside the perimeter -> distance 0, AVOID
     if (!insidePerimeter) {
       for (const ring of rings) {
         // sample test using point-in-ring on route vertices
         for (const p of route) {
-          if (pointInRing(p[0], p[1], ring)) { insidePerimeter = true; nearestFireKm = 0; nearestFireKind = 'inside'; break; }
+          if (pointInRing(p[0], p[1], ring)) {
+            insidePerimeter = true;
+            nearestFireKm = 0;
+            nearestFireKind = 'inside';
+            break;
+          }
         }
         if (insidePerimeter) break;
       }
@@ -197,7 +232,7 @@ export function computeRouteRisk(route, fire, incidents, waAlerts) {
 
   // ---- ODOT incidents near this route ----
   const incidentHits = [];
-  for (const inc of (incidents || [])) {
+  for (const inc of incidents || []) {
     if (!Number.isFinite(inc.lon) || !Number.isFinite(inc.lat)) continue;
     const d = pointToRoutePrefiltered(inc.lon, inc.lat, route, routeBox);
     if (d <= INCIDENT_KM) {
@@ -208,7 +243,7 @@ export function computeRouteRisk(route, fire, incidents, waAlerts) {
 
   // ---- WSDOT (Washington) alerts near this route ----
   const waHits = [];
-  for (const a of (waAlerts || [])) {
+  for (const a of waAlerts || []) {
     if (!Number.isFinite(a.lon) || !Number.isFinite(a.lat)) continue;
     const d = pointToRoutePrefiltered(a.lon, a.lat, route, routeBox);
     if (d <= INCIDENT_KM) {
@@ -251,7 +286,8 @@ export function computeRouteRisk(route, fire, incidents, waAlerts) {
     if (verdict !== VERDICT.AVOID || !hazard) {
       const top = incidentHits[0];
       reason = incidentHeadline(top);
-      if (!hazard || hazard.type !== 'fire') hazard = { type: 'incident', incident: top, distKm: top.distKm };
+      if (!hazard || hazard.type !== 'fire')
+        hazard = { type: 'incident', incident: top, distKm: top.distKm };
     }
   }
 
@@ -261,7 +297,10 @@ export function computeRouteRisk(route, fire, incidents, waAlerts) {
   const avoidWa = waHits.find((a) => a.forcesAvoid);
   if (avoidWa) {
     verdict = worstVerdict(verdict, VERDICT.AVOID);
-    if (!wasAvoidBefore) { reason = waAlertHeadline(avoidWa); hazard = { type: 'waAlert', alert: avoidWa, distKm: avoidWa.distKm }; }
+    if (!wasAvoidBefore) {
+      reason = waAlertHeadline(avoidWa);
+      hazard = { type: 'waAlert', alert: avoidWa, distKm: avoidWa.distKm };
+    }
   } else if (waHits.length) {
     verdict = worstVerdict(verdict, VERDICT.CAUTION);
     // surface the WA alert only if neither fire nor an ODOT incident already
@@ -296,11 +335,11 @@ export function incidentHeadline(inc) {
 function pointInRing(lon, lat, ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0], yi = ring[i][1];
-    const xj = ring[j][0], yj = ring[j][1];
-    const intersect =
-      (yi > lat) !== (yj > lat) &&
-      lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    const xi = ring[i][0],
+      yi = ring[i][1];
+    const xj = ring[j][0],
+      yj = ring[j][1];
+    const intersect = yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
     if (intersect) inside = !inside;
   }
   return inside;
@@ -324,16 +363,22 @@ export function hazardBox(route, hazard, boxKm = 3) {
   const dLat = boxKm / 111.32;
   const dLon = boxKm / (111.32 * Math.cos((center.lat * Math.PI) / 180));
   return {
-    west: center.lon - dLon, east: center.lon + dLon,
-    south: center.lat - dLat, north: center.lat + dLat,
+    west: center.lon - dLon,
+    east: center.lon + dLon,
+    south: center.lat - dLat,
+    north: center.lat + dLat,
   };
 }
 
 function nearestRoutePoint(route, lon, lat) {
-  let best = Infinity, bestPt = route[0];
+  let best = Infinity,
+    bestPt = route[0];
   for (const p of route) {
     const d = metersBetween(lon, lat, p[0], p[1]);
-    if (d < best) { best = d; bestPt = p; }
+    if (d < best) {
+      best = d;
+      bestPt = p;
+    }
   }
   return { lon: bestPt[0], lat: bestPt[1] };
 }

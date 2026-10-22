@@ -21,11 +21,9 @@ function getWorker() {
 
 let lastResult = null;
 let panelCtl = null;
-let selectedRank = null;
 let running = false;
 let fireVisible = true;
 let riskVisible = true;
-let mode = 'regional'; // 'regional' | 'box'
 
 const map = setupMap((box) => {
   $('analyze-btn').disabled = false;
@@ -38,7 +36,8 @@ const map = setupMap((box) => {
   endDrawUi();
 });
 
-const DEFAULT_HINT = 'Tap "Draw analysis area", then drag a box across the ground you want to assess.';
+const DEFAULT_HINT =
+  'Tap "Draw analysis area", then drag a box across the ground you want to assess.';
 let drawingMode = false;
 
 function endDrawUi() {
@@ -50,23 +49,22 @@ function endDrawUi() {
 
 // ---- mode routing ----
 function enterBoxMode() {
-  mode = 'box';
   document.body.classList.add('mode-box');
   $('drive-board').hidden = true;
   $('sidebar').hidden = false;
 }
 function enterRegionalMode() {
-  mode = 'regional';
   document.body.classList.remove('mode-box');
   $('sidebar').hidden = true;
   $('drive-board').hidden = false;
   // clear box overlays so the regional layers are unobstructed
   map.clearAll();
-  lastResult = null; selectedRank = null;
+  lastResult = null;
   $('results').innerHTML = '';
   $('analyze-btn').disabled = true;
   $('clear-btn').hidden = true;
-  $('conditions').hidden = true; $('conditions').innerHTML = '';
+  $('conditions').hidden = true;
+  $('conditions').innerHTML = '';
   const u = new URL(location.href);
   u.searchParams.delete('bbox');
   history.replaceState(null, '', u);
@@ -79,10 +77,13 @@ async function doSearch() {
   $('search-btn').textContent = '...';
   const ok = await map.geocode(q);
   $('search-btn').textContent = 'Go';
-  if (!ok) $('draw-hint').textContent = 'Could not find that place. Try lat,lng or a more specific name.';
+  if (!ok)
+    $('draw-hint').textContent = 'Could not find that place. Try lat,lng or a more specific name.';
 }
 $('search-btn').addEventListener('click', doSearch);
-$('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+$('search').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doSearch();
+});
 
 // ---- back to drive board ----
 $('back-to-board').addEventListener('click', () => {
@@ -104,12 +105,13 @@ $('draw-btn').addEventListener('click', () => {
   document.body.classList.add('drawing'); // collapses the sidebar on mobile for room
   $('draw-btn').classList.add('active');
   $('draw-btn').textContent = 'Cancel drawing';
-  $('draw-hint').textContent = 'Drag a box across the ground - press and drag on the map (touch works).';
+  $('draw-hint').textContent =
+    'Drag a box across the ground - press and drag on the map (touch works).';
 });
 $('clear-btn').addEventListener('click', () => {
   map.clearAll();
   endDrawUi();
-  lastResult = null; selectedRank = null;
+  lastResult = null;
   $('results').innerHTML = '';
   $('analyze-btn').disabled = true;
   $('clear-btn').hidden = true;
@@ -154,7 +156,8 @@ function readUi() {
 // throws - a wind hiccup must not block the whole run.
 async function fetchWind(lat, lon) {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
+    const url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
       `&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=mph`;
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -166,7 +169,7 @@ async function fetchWind(lat, lon) {
     const gustMph = Number(c.wind_gusts_10m);
     if (!Number.isFinite(speedMph) || !Number.isFinite(dirDeg)) return null;
     return { speedMph, dirDeg, gustMph: Number.isFinite(gustMph) ? gustMph : null };
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -179,7 +182,10 @@ async function runAnalysis(box) {
   setProgress(0.02, 'Starting...');
   // reflect the area in a shareable URL
   const u = new URL(location.href);
-  u.searchParams.set('bbox', [box.west, box.south, box.east, box.north].map((v) => v.toFixed(5)).join(','));
+  u.searchParams.set(
+    'bbox',
+    [box.west, box.south, box.east, box.north].map((v) => v.toFixed(5)).join(','),
+  );
   history.replaceState(null, '', u);
 
   const ui = readUi();
@@ -208,11 +214,14 @@ function onWorkerMessage(e) {
   } else if (msg.type === 'result') {
     running = false;
     $('analyze-btn').disabled = false;
-    setTimeout(() => { $('progress').hidden = true; }, 400);
+    setTimeout(() => {
+      $('progress').hidden = true;
+    }, 400);
     lastResult = msg.result;
     map.showRisk(lastResult);
     map.showFire(lastResult);
-    fireVisible = true; riskVisible = true;
+    fireVisible = true;
+    riskVisible = true;
     map.toggleFire(true);
     map.toggleRisk(true);
     $('toggle-fire').hidden = false;
@@ -238,7 +247,6 @@ function selectSpot(rank) {
   if (!lastResult) return;
   const spot = lastResult.spots.find((s) => s.rank === rank);
   if (!spot) return;
-  selectedRank = rank;
   panelCtl?.select(rank);
   map.showFootprint(lastResult, spot);
   map.flyToSpot(spot);
@@ -247,7 +255,7 @@ function selectSpot(rank) {
 // ---- live conditions strip ----
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 function compassLabel(deg) {
-  const i = Math.round(((deg % 360) + 360) % 360 / 45) % 8;
+  const i = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
   return COMPASS[i];
 }
 
@@ -262,12 +270,13 @@ function renderConditions(result) {
     const fromLabel = compassLabel(wind.dirDeg);
     const toBearing = (wind.dirDeg + 180) % 360;
     const gust = Number.isFinite(wind.gustMph) ? `, gusts ${Math.round(wind.gustMph)}` : '';
-    const svg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">` +
+    const svg =
+      `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">` +
       `<path d="M12 2 L20 20 L12 15 L4 20 Z"/></svg>`;
     const arrow = `<span class="wind-arrow" style="transform:rotate(${toBearing.toFixed(0)}deg)" aria-hidden="true">${svg}</span>`;
     rows.push(
       `<div class="cond-row">${arrow}<span>Wind <strong>${Math.round(wind.speedMph)} mph</strong> ` +
-      `from ${fromLabel} (${Math.round(wind.dirDeg)} deg)${gust}</span></div>`
+        `from ${fromLabel} (${Math.round(wind.dirDeg)} deg)${gust}</span></div>`,
     );
   } else if (wind === null) {
     rows.push(`<div class="cond-row"><span>Wind: off</span></div>`);
@@ -285,7 +294,8 @@ function renderConditions(result) {
       near = km < 5;
       fireTxt = `Nearest active fire <strong>${km.toFixed(1)} km</strong>`;
     }
-    const nPerim = (fire.perimeters && fire.perimeters.features) ? fire.perimeters.features.length : 0;
+    const nPerim =
+      fire.perimeters && fire.perimeters.features ? fire.perimeters.features.length : 0;
     const nHot = Array.isArray(fire.hotspots) ? fire.hotspots.length : 0;
     const counts = [];
     if (nPerim) counts.push(`${nPerim} perimeter${nPerim === 1 ? '' : 's'}`);
@@ -306,7 +316,7 @@ async function open3d(rank) {
   if (!spot) return;
   $('viewer').hidden = false;
   $('viewer-title').textContent = `3D view - Spot ${rank}`;
-  view3dMod = view3dMod || await import('./scene/view3d.js');
+  view3dMod = view3dMod || (await import('./scene/view3d.js'));
   requestAnimationFrame(() => view3dMod.openViewer($('viewer-canvas'), lastResult, spot));
 }
 $('viewer-close').addEventListener('click', () => {

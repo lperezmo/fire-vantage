@@ -15,13 +15,15 @@ const VERDICT_LABEL = {
 
 const RANK = { avoid: 0, caution: 1, clear: 2, unknown: 1.5 };
 
-const CAVEAT_BASE =
-  'Incidents are ODOT-reported on Oregon state highways; confirm on TripCheck.';
+const CAVEAT_BASE = 'Incidents are ODOT-reported on Oregon state highways; confirm on TripCheck.';
 const CAVEAT_NO_WA = ' Washington roads are not included yet.';
 const CAVEAT_WA = ' Washington roads use WSDOT HighwayAlerts; confirm on the WSDOT travel map.';
 
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const esc = (s) =>
+  String(s).replace(
+    /[<>&"]/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c],
+  );
 
 // km -> miles, rounded
 const mi = (km) => Math.round(km * 0.621371);
@@ -61,9 +63,11 @@ export function renderDriveBoard(container, state, handlers) {
   }
 
   // ---- headline verdict bar ----
-  const affected = results.filter((r) => r.verdict === VERDICT.AVOID || r.verdict === VERDICT.CAUTION).length;
+  const affected = results.filter(
+    (r) => r.verdict === VERDICT.AVOID || r.verdict === VERDICT.CAUTION,
+  ).length;
   const anyAvoid = results.some((r) => r.verdict === VERDICT.AVOID);
-  const barClass = affected === 0 ? 'clear' : (anyAvoid ? 'avoid' : 'caution');
+  const barClass = affected === 0 ? 'clear' : anyAvoid ? 'avoid' : 'caution';
   const bar = document.createElement('div');
   bar.className = `db-bar ${barClass}`;
   let barText;
@@ -105,9 +109,9 @@ export function renderDriveBoard(container, state, handlers) {
 
     row.innerHTML =
       `<div class="db-row-head">` +
-        `<span class="chip ${r.verdict}">${VERDICT_LABEL[r.verdict]}</span>` +
-        `<span class="db-town">${esc(r.town.name)}</span>` +
-        `<span class="db-dist">${Math.round(r.town.distKm)} km / ${r.town.durMin} min</span>` +
+      `<span class="chip ${r.verdict}">${VERDICT_LABEL[r.verdict]}</span>` +
+      `<span class="db-town">${esc(r.town.name)}</span>` +
+      `<span class="db-dist">${Math.round(r.town.distKm)} km / ${r.town.durMin} min</span>` +
       `</div>` +
       `<div class="db-reason">${esc(r.reason)}</div>` +
       `<div class="db-fire">${fireTxt}</div>` +
@@ -168,7 +172,9 @@ export function renderDriveBoard(container, state, handlers) {
 function buildCard(cardEl, r, hub, handlers) {
   const town = r.town;
   const bits = [];
-  bits.push(`<div class="card-line"><span>Drive</span><strong>${Math.round(town.distKm)} km / ${town.durMin} min</strong></div>`);
+  bits.push(
+    `<div class="card-line"><span>Drive</span><strong>${Math.round(town.distKm)} km / ${town.durMin} min</strong></div>`,
+  );
 
   // deciding hazard
   let hazTxt = r.reason;
@@ -176,33 +182,51 @@ function buildCard(cardEl, r, hub, handlers) {
 
   // nearest fire distance always shown
   if (Number.isFinite(r.nearestFireKm)) {
-    bits.push(`<div class="card-line"><span>Nearest fire</span><strong>${r.nearestFireKm.toFixed(1)} km (~${mi(r.nearestFireKm)} mi)</strong></div>`);
+    bits.push(
+      `<div class="card-line"><span>Nearest fire</span><strong>${r.nearestFireKm.toFixed(1)} km (~${mi(r.nearestFireKm)} mi)</strong></div>`,
+    );
   } else {
-    bits.push(`<div class="card-line"><span>Nearest fire</span><strong>none near route</strong></div>`);
+    bits.push(
+      `<div class="card-line"><span>Nearest fire</span><strong>none near route</strong></div>`,
+    );
   }
 
   // wind (if available on the result)
   if (r.wind && Number.isFinite(r.wind.speedMph)) {
     const from = compass(r.wind.dirDeg);
-    bits.push(`<div class="card-line"><span>Wind</span><strong>${Math.round(r.wind.speedMph)} mph from ${from}</strong></div>`);
+    bits.push(
+      `<div class="card-line"><span>Wind</span><strong>${Math.round(r.wind.speedMph)} mph from ${from}</strong></div>`,
+    );
   }
 
   // incident list (if any). When WA alerts are also present we prefix a source
   // label so the two states are distinguishable; otherwise keep the bare list.
   const hasWa = r.waHits && r.waHits.length;
   if (r.incidentHits && r.incidentHits.length) {
-    const items = r.incidentHits.slice(0, 3).map((i) =>
-      `<li>${esc(i.beginMarker || i.route || 'state highway')}: ${esc(i.comments || i.subType || i.category || 'incident')}</li>`).join('');
+    const items = r.incidentHits
+      .slice(0, 3)
+      .map(
+        (i) =>
+          `<li>${esc(i.beginMarker || i.route || 'state highway')}: ${esc(i.comments || i.subType || i.category || 'incident')}</li>`,
+      )
+      .join('');
     if (hasWa) bits.push(`<div class="card-src">Oregon (ODOT)</div>`);
     bits.push(`<ul class="card-incidents">${items}</ul>`);
   }
 
   // Washington (WSDOT) alerts: shown just like ODOT incidents when present.
   if (hasWa) {
-    const items = r.waHits.slice(0, 3).map((a) => {
-      const where = a.road ? (a.milePost != null ? `${a.road} MP ${a.milePost}` : a.road) : 'WA highway';
-      return `<li>${esc(where)}: ${esc(a.headline || a.category || 'alert')}</li>`;
-    }).join('');
+    const items = r.waHits
+      .slice(0, 3)
+      .map((a) => {
+        const where = a.road
+          ? a.milePost != null
+            ? `${a.road} MP ${a.milePost}`
+            : a.road
+          : 'WA highway';
+        return `<li>${esc(where)}: ${esc(a.headline || a.category || 'alert')}</li>`;
+      })
+      .join('');
     bits.push(`<div class="card-src">Washington (WSDOT)</div>`);
     bits.push(`<ul class="card-incidents">${items}</ul>`);
   }
@@ -218,13 +242,18 @@ function buildCard(cardEl, r, hub, handlers) {
   }
 
   // actions
-  bits.push(`<div class="card-actions">` +
-    `<button class="card-inspect">Inspect this ground</button>` +
-    `<a class="card-maps" href="${mapsUrl(hub, town)}" target="_blank" rel="noopener">Open in Maps</a>` +
-  `</div>`);
+  bits.push(
+    `<div class="card-actions">` +
+      `<button class="card-inspect">Inspect this ground</button>` +
+      `<a class="card-maps" href="${mapsUrl(hub, town)}" target="_blank" rel="noopener">Open in Maps</a>` +
+      `</div>`,
+  );
 
   cardEl.innerHTML = bits.join('');
-  cardEl.querySelector('.card-inspect').addEventListener('click', (e) => { e.stopPropagation(); handlers.onInspect(town.id); });
+  cardEl.querySelector('.card-inspect').addEventListener('click', (e) => {
+    e.stopPropagation();
+    handlers.onInspect(town.id);
+  });
 }
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -245,23 +274,31 @@ export function setupBottomSheet(container) {
   apply();
 
   const handle = () => container.querySelector('.sheet-handle');
-  let startY = null, startIdx = idx;
+  let startY = null;
 
   function onDown(e) {
     const h = handle();
     if (!h || !h.contains(e.target)) return;
     startY = e.touches ? e.touches[0].clientY : e.clientY;
-    startIdx = idx;
   }
   function onMove(e) {
     if (startY == null) return;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
     const dy = y - startY;
     if (Math.abs(dy) < 40) return;
-    if (dy < 0 && idx < snaps.length - 1) { idx++; startY = y; apply(); }
-    else if (dy > 0 && idx > 0) { idx--; startY = y; apply(); }
+    if (dy < 0 && idx < snaps.length - 1) {
+      idx++;
+      startY = y;
+      apply();
+    } else if (dy > 0 && idx > 0) {
+      idx--;
+      startY = y;
+      apply();
+    }
   }
-  function onUp() { startY = null; }
+  function onUp() {
+    startY = null;
+  }
 
   container.addEventListener('pointerdown', onDown);
   window.addEventListener('pointermove', onMove);
@@ -270,14 +307,23 @@ export function setupBottomSheet(container) {
   container.addEventListener('click', (e) => {
     const h = handle();
     if (h && h.contains(e.target)) {
-      idx = (idx === snaps.length - 1) ? 1 : snaps.length - 1;
+      idx = idx === snaps.length - 1 ? 1 : snaps.length - 1;
       apply();
     }
   });
 
   return {
-    expand() { idx = 2; apply(); },
-    peek() { idx = 1; apply(); },
-    collapse() { idx = 0; apply(); },
+    expand() {
+      idx = 2;
+      apply();
+    },
+    peek() {
+      idx = 1;
+      apply();
+    },
+    collapse() {
+      idx = 0;
+      apply();
+    },
   };
 }

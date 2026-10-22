@@ -14,15 +14,24 @@ function devApiPlugin() {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (req.url && req.url.startsWith('/api/tiles')) {
-          proxyTile(req.url, res).catch(() => { res.statusCode = 502; res.end('proxy error'); });
+          proxyTile(req.url, res).catch(() => {
+            res.statusCode = 502;
+            res.end('proxy error');
+          });
           return;
         }
         if (req.url && req.url.startsWith('/api/fires')) {
-          proxyFires(req.url, res).catch(() => { res.statusCode = 502; res.end('proxy error'); });
+          proxyFires(req.url, res).catch(() => {
+            res.statusCode = 502;
+            res.end('proxy error');
+          });
           return;
         }
         if (req.url && req.url.startsWith('/api/wa-alerts')) {
-          proxyWaAlerts(req.url, res).catch(() => { res.statusCode = 502; res.end('proxy error'); });
+          proxyWaAlerts(req.url, res).catch(() => {
+            res.statusCode = 502;
+            res.end('proxy error');
+          });
           return;
         }
         next();

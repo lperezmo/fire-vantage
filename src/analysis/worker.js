@@ -16,7 +16,7 @@ self.onmessage = async (e) => {
 
     post(0.93, 'Checking active fires...');
     const fire = await fetchFireData(bbox, (pct, label) =>
-      post(0.93 + 0.03 * (pct || 0), label || 'Checking active fires...')
+      post(0.93 + 0.03 * (pct || 0), label || 'Checking active fires...'),
     );
 
     post(0.97, 'Scoring spots...');
@@ -24,11 +24,7 @@ self.onmessage = async (e) => {
     post(1, 'Done');
 
     // collect transferables
-    const transfer = [
-      result.heights.buffer,
-      result.fuel.buffer,
-      result.risk.buffer,
-    ];
+    const transfer = [result.heights.buffer, result.fuel.buffer, result.risk.buffer];
     for (const s of result.spots) transfer.push(s.footprint.buffer);
     result.texBitmap = parcel.texBitmap || null;
     result.texW = parcel.texW;
