@@ -2,7 +2,10 @@
 // result overlays (spread-risk heatmap + selected-spot escape LOS footprint +
 // live fire perimeters + hotspot markers + staging pins).
 
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+
+maplibregl.setWorkerUrl(mapWorkerUrl);
 
 // Keyless Esri raster basemaps (same pattern as the existing World Imagery).
 // ArcGIS tile path is /{z}/{y}/{x}. Satellite = World Imagery; Street = World

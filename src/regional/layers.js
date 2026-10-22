@@ -8,7 +8,7 @@
 // All draw calls go through whenStyle(map, fn) so they are safe before the
 // style settles (cold start). Verdict colors match the panel chips.
 
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import { VERDICT } from './proximity.js';
 
 export const VERDICT_COLOR = {
