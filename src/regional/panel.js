@@ -19,7 +19,6 @@ const CAVEAT_BASE = 'Incidents are ODOT-reported on Oregon state highways; confi
 const CAVEAT_NO_WA = ' Washington roads are not included yet.';
 const CAVEAT_WA = ' Washington roads use WSDOT HighwayAlerts; confirm on the WSDOT travel map.';
 
-const $ = (id) => document.getElementById(id);
 const esc = (s) =>
   String(s).replace(
     /[<>&"]/g,
@@ -275,14 +274,12 @@ export function setupBottomSheet(container) {
   apply();
 
   const handle = () => container.querySelector('.sheet-handle');
-  let startY = null,
-    startIdx = idx;
+  let startY = null;
 
   function onDown(e) {
     const h = handle();
     if (!h || !h.contains(e.target)) return;
     startY = e.touches ? e.touches[0].clientY : e.clientY;
-    startIdx = idx;
   }
   function onMove(e) {
     if (startY == null) return;

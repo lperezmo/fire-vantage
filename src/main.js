@@ -21,11 +21,9 @@ function getWorker() {
 
 let lastResult = null;
 let panelCtl = null;
-let selectedRank = null;
 let running = false;
 let fireVisible = true;
 let riskVisible = true;
-let mode = 'regional'; // 'regional' | 'box'
 
 const map = setupMap((box) => {
   $('analyze-btn').disabled = false;
@@ -51,20 +49,17 @@ function endDrawUi() {
 
 // ---- mode routing ----
 function enterBoxMode() {
-  mode = 'box';
   document.body.classList.add('mode-box');
   $('drive-board').hidden = true;
   $('sidebar').hidden = false;
 }
 function enterRegionalMode() {
-  mode = 'regional';
   document.body.classList.remove('mode-box');
   $('sidebar').hidden = true;
   $('drive-board').hidden = false;
   // clear box overlays so the regional layers are unobstructed
   map.clearAll();
   lastResult = null;
-  selectedRank = null;
   $('results').innerHTML = '';
   $('analyze-btn').disabled = true;
   $('clear-btn').hidden = true;
@@ -117,7 +112,6 @@ $('clear-btn').addEventListener('click', () => {
   map.clearAll();
   endDrawUi();
   lastResult = null;
-  selectedRank = null;
   $('results').innerHTML = '';
   $('analyze-btn').disabled = true;
   $('clear-btn').hidden = true;
@@ -175,7 +169,7 @@ async function fetchWind(lat, lon) {
     const gustMph = Number(c.wind_gusts_10m);
     if (!Number.isFinite(speedMph) || !Number.isFinite(dirDeg)) return null;
     return { speedMph, dirDeg, gustMph: Number.isFinite(gustMph) ? gustMph : null };
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -253,7 +247,6 @@ function selectSpot(rank) {
   if (!lastResult) return;
   const spot = lastResult.spots.find((s) => s.rank === rank);
   if (!spot) return;
-  selectedRank = rank;
   panelCtl?.select(rank);
   map.showFootprint(lastResult, spot);
   map.flyToSpot(spot);

@@ -114,7 +114,7 @@ export function openViewer(canvas, result, spot) {
       if (arrow.line && arrow.line.material) arrow.line.material.linewidth = 2;
       scene.add(arrow);
     }
-  } catch (e) {
+  } catch {
     // defensive: missing or odd wind must never break the viewer
   }
 
@@ -201,7 +201,7 @@ function buildTexture(result, spot) {
         ctx.drawImage(rv, 0, 0, tw, th);
       }
     }
-  } catch (e) {
+  } catch {
     // defensive: a missing or malformed risk grid must never break the texture
   }
 
@@ -225,7 +225,7 @@ function buildTexture(result, spot) {
       octx.putImageData(oimg, 0, 0);
       ctx.drawImage(ov, 0, 0, tw, th);
     }
-  } catch (e) {
+  } catch {
     // defensive
   }
 
