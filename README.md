@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.svg" alt="Fire Vantage" width="380">
+</p>
+
 # Fire Vantage
 
 Wildfire situational awareness and driving decisions for eastern Oregon. The app
