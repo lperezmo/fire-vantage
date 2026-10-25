@@ -167,8 +167,9 @@ bun run check    # bun fmt --check, bun lint and the build
 
 Bun 1.4 or newer. Vite is still the dev server and bundler; the scripts run it on
 the Bun runtime, which also loads `.env` into `process.env` for the dev proxies.
-`bun fmt` and `bun lint` only exist on Bun canary for now (`bun upgrade --canary`),
-so CI runs them on canary and keeps the build job on the pinned Bun release. The `/api/tiles`, `/api/fires`, and `/api/wa-alerts` routes run
+`bun fmt` ships in Bun 1.4.4, but `bun lint` only exists on Bun canary for now
+(`bun upgrade --canary`), so CI runs both on canary and keeps the build job on the
+pinned Bun release. The `/api/tiles`, `/api/fires`, and `/api/wa-alerts` routes run
 as Vercel serverless functions in production and as Vite dev middleware locally,
 so the app behaves identically in both. To exercise the Washington alerts path in
 dev, copy `.env.example` to `.env` and set `WSDOT_ACCESS_CODE`; without it the WA
